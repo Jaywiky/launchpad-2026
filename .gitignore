@@ -4,3 +4,6 @@
 #node
 package-lock.json
 node_modules/
+
+# production builds
+frontend/dist/
