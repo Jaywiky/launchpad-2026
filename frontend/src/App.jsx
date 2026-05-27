@@ -20,8 +20,8 @@ const resources = [
 
 function App() {
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Ladywood Resources</h1>
+    <div className="min-h-screen bg-[#222222] text-white max-w-md mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">Ladywood Resources</h1>
       
 
       {resources.map(resource => (
