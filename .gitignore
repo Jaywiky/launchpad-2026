@@ -59,3 +59,6 @@ Desktop.ini
 *.sln.docstates
 
 .vscode/
+
+capacitor.settings.gradle
+capacitor.build.gradle
