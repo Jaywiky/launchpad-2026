@@ -3,6 +3,7 @@ import ResourceCard from './components/ResourceCard';
 import { App as CapacitorApp } from '@capacitor/app';
 
 import { initializeStorage } from './services/storage/fileSystem';
+import { runFullSyncCycle } from './services/sync/syncManager'
 
 const resources = [
   {
@@ -27,11 +28,11 @@ function App() {
   useEffect(() => {
     const bootSequence = async () => {
       try {
-        console.log("App booting: Initializing local storage...")
+        console.log("App booting: Initializing local storage")
         await initializeStorage()
 
-        // console.log("Storage ready. Running initial sync...")
-        // await runFullSyncCycle()
+        console.log("Storage ready. Running initial sync")
+        await runFullSyncCycle()
 
         startPolling();
       } catch (error) {
