@@ -24,6 +24,9 @@ export default function UserMap() {
           if (position) {
             setUserPos([position.coords.latitude, position.coords.longitude]);
           }
+          else {
+            setUserPos([52.475109, -1.922240])
+          }
         }
       );
     };
