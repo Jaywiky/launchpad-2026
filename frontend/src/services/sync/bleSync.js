@@ -60,6 +60,8 @@ async function scanForPeers() {
                 return
             }
 
+            
+
             const peerVersion = mfgDataView.getUint8(0)
             console.log("peer version: ${peerVersion}. current version: ${version}.")
 
