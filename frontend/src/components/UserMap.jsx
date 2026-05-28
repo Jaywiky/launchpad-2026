@@ -40,7 +40,7 @@ export default function UserMap() {
       center={userPos ?? [51.505, -0.09]}
       zoom={13}
       scrollWheelZoom={false}
-      className="h-64 mb-6 rounded-lg z-0"
+      className="h-full w-full z-0"
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

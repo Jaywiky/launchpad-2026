@@ -80,6 +80,7 @@ function App() {
   };
 
   const [activeCategory, setActiveCategory] = useState('All')
+  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const filteredResources = resources.filter(resource => {
     if (activeCategory === 'All') {
       return true;
@@ -89,28 +90,42 @@ function App() {
 
   const categories = ['All', 'food_bank', 'toilet'];
   return (
-    <div className="min-h-screen bg-[#222222] text-white max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Ladywood Resources</h1>
-      <div className="flex gap-2 mb-6">
-        {categories.map(category => (
-          <button key={category} onClick={() => setActiveCategory(category)} className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeCategory === category
-            ? 'bg-[#e2f0d9] text-green-900'
-            : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
-            }`}>{category}</button>
-        ))}
+    <div className="relative h-screen w-full bg-[#111111] overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <UserMap />
       </div>
-
-      <UserMap />
-
-      {filteredResources.map(resource => (
-        <ResourceCard
-          key={resource.id}
-          name={resource.name}
-          type={resource.type}
-          notes={resource.notes}
-          extended={resource.extended}
-        />
-      ))}
+      <div className={`absolute bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-[#222222] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out z-10 flex flex-col ${isSheetExpanded ? "h-[85vh]" : "h-[30vh]"
+        }`}>
+        <div
+          className="p-4 pt-6 cursor-pointer flex flex-col items-center shrink-0"
+          onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+        >
+          <div className="w-12 h-1.5 bg-gray-500 rounded-full mb-4"></div>
+          <h1 className="text-2xl font-bold w-full text-white">Ladywood Resources</h1>
+        </div>
+        <div className="px-4 mb-4 flex gap-2 shrink-0 overflow-x-auto">
+          {categories.map(category => (
+            <button key={category} onClick={(e) => {
+              e.stopPropagation();
+              setActiveCategory(category)
+            }} className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeCategory === category
+              ? 'bg-[#e2f0d9] text-green-900'
+              : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
+              }`}>{category}</button>
+          ))}
+        </div>
+        <div className="px-4 pb-8 overflow-y-auto flex-1 space-y-4">
+          {filteredResources.map(resource => (
+            <ResourceCard
+              key={resource.id}
+              name={resource.name}
+              type={resource.type}
+              notes={resource.notes}
+              extended={resource.extended}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
