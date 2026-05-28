@@ -1,36 +1,36 @@
-import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
-import { Geolocation } from '@capacitor/geolocation';
+import { useEffect, useRef, useState } from 'react'
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
+import { Geolocation } from '@capacitor/geolocation'
 
 function RecenterOnce({ pos }) {
-  const map = useMap();
-  const [hasRecentered, setHasRecentered] = useState(false);
+  const map = useMap()
+  const [hasRecentered, setHasRecentered] = useState(false)
 
   useEffect(() => {
     if (pos && !hasRecentered) {
-      map.setView(pos, 15);
+      map.setView(pos, 15)
       setHasRecentered(true);
     }
-  }, [pos, hasRecentered, map]);
+  }, [pos, hasRecentered, map])
 
-  return null;
+  return null
 }
 
 function LocateButton({ pos, loading, onLocate }) {
-  const map = useMap();
+  const map = useMap()
 
   const handleClick = () => {
     if (pos) {
-      map.flyTo(pos, 16, { duration: 1 });
+      map.flyTo(pos, 16, { duration: 0.5 })
     } else {
-      onLocate();
+      onLocate()
     }
-  };
+  }
 
   return (
     <button
       onClick={handleClick}
-      className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full w-10 h-10 shadow-md flex items-center justify-center active:bg-gray-100"
+      className="absolute top-4 right-4 z-[1000] bg-white rounded-full w-10 h-10 shadow-md flex items-center justify-center active:bg-gray-100"
     >
       {loading ? (
         <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -50,53 +50,53 @@ function LocateButton({ pos, loading, onLocate }) {
         </svg>
       )}
     </button>
-  );
+  )
 }
 
 export default function UserMap() {
-  const [userPos, setUserPos] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isRealPos, setIsRealPos] = useState(false);
+  const [userPos, setUserPos] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isRealPos, setIsRealPos] = useState(false)
 
   const fetchLocation = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
-      await Geolocation.requestPermissions();
+      await Geolocation.requestPermissions()
 
       try {
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: false,
           timeout: 15000,
-        });
-        setUserPos([pos.coords.latitude, pos.coords.longitude]);
-        setIsRealPos(true);
+        })
+        setUserPos([pos.coords.latitude, pos.coords.longitude])
+        setIsRealPos(true)
       } catch {
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 30000,
-        });
-        setUserPos([pos.coords.latitude, pos.coords.longitude]);
-        setIsRealPos(true);
+        })
+        setUserPos([pos.coords.latitude, pos.coords.longitude])
+        setIsRealPos(true)
       }
     } catch (err) {
-      console.error('Location error:', err);
-      setError('Could not get location');
-      setUserPos([52.475109, -1.922240]);
-      setIsRealPos(false);
+      console.error('Location error:', err)
+      setError('Could not get location')
+      setUserPos([52.475109, -1.922240])
+      setIsRealPos(false)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchLocation();
-  }, []);
+    fetchLocation()
+  }, [])
 
   return (
-    <div className="relative">
+    <div className="fixed inset-0 z-0">
       {error && (
         <div className="absolute top-2 left-2 right-2 z-[1000] bg-red-100 text-red-700 text-sm px-3 py-2 rounded-lg">
           {error}
@@ -107,11 +107,11 @@ export default function UserMap() {
       <MapContainer
         center={[52.481346, -1.918235]}
         zoom={13}
-        scrollWheelZoom={false}
-        className="h-64 mb-6 rounded-lg z-0"
+        scrollWheelZoom={true}
+        className="h-full w-full z-0"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -148,5 +148,5 @@ export default function UserMap() {
         <LocateButton pos={userPos} loading={loading} onLocate={fetchLocation} />
       </MapContainer>
     </div>
-  );
+  )
 }
