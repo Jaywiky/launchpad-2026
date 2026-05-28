@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import ResourceCard from './components/ResourceCard';
 import { App as CapacitorApp } from '@capacitor/app';
-import { MapContainer } from 'react-leaflet/MapContainer'
-import { TileLayer } from 'react-leaflet/TileLayer'
-import { useMap } from 'react-leaflet/hooks'
+import { MapContainer, TileLayer, useMap, Marker, Popup } from 'react-leaflet'
 
 import { initializeStorage } from './services/storage/fileSystem';
 import { runFullSyncCycle } from './services/sync/syncManager'
@@ -102,7 +100,7 @@ function App() {
         ))}
       </div>
 
-      <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={false}>
+      <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={false} className="h-64 mb-6 rounded-lg z-0">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
