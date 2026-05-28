@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import ResourceCard from './components/ResourceCard';
 import { App as CapacitorApp } from '@capacitor/app';
-import { MapContainer } from 'react-leaflet/MapContainer'
-import { TileLayer } from 'react-leaflet/TileLayer'
-import { useMap } from 'react-leaflet/hooks'
+import { MapContainer, TileLayer, useMap, Marker, Popup } from 'react-leaflet'
 
 import { initializeStorage } from './services/storage/fileSystem';
 import { runFullSyncCycle } from './services/sync/syncManager'
