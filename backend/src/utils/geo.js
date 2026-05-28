@@ -1,5 +1,5 @@
 /**
- * Haversine distance between two WGS84 points.
+ * Haversine distance between two points.
  * @param {number} lat1
  * @param {number} lng1
  * @param {number} lat2
