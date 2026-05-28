@@ -1,6 +1,22 @@
-#enviroment
+# Environment
 .env
+.env.local
+.env.production
 
-#node
-package-lock.json
+# Node
 node_modules/
+package-lock.json
+
+# Vercel
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
