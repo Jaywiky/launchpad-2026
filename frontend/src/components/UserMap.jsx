@@ -16,6 +16,8 @@ function RecenterOnce({ pos }) {
   return null
 }
 
+
+
 function LocateButton({ pos, loading, onLocate }) {
   const map = useMap()
 

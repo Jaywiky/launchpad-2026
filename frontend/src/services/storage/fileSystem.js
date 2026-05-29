@@ -3,7 +3,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 export async function initializeStorage() {
     const dirs = ['tmp', 'json_data', 'translations']
 
-    for (const path in dirs) {
+    for (const path of dirs) {
         try {
             await Filesystem.mkdir({
                 path,
@@ -17,7 +17,8 @@ export async function initializeStorage() {
 
 }
 
-export async function writeJsonFile(path, data) {
+export async function writeJsonFile(path, jsonData) {
+    const data = await JSON.stringify(jsonData)
     try {
         await Filesystem.writeFile({
             path,
@@ -41,7 +42,7 @@ export async function readJsonFile(path) {
             directory: Directory.Data,
             encoding: Encoding.UTF8
         })
-        return contents.data
+        return await JSON.parse(contents.data)
     } catch (e) {
         console.error("Unable to read file: ", e)
         return false
@@ -53,11 +54,21 @@ export async function commitFile(tmpPath, finalPath) {
         await Filesystem.rename({
             from: tmpPath,
             to: finalPath,
-            directory: Directory.Data
+            directory: Directory.Data,
+            encoding: Encoding.UTF8,
+            recursive: true
         });
         return true;
     } catch (error) {
         console.error(`Failed to commit file from ${tmpPath} to ${finalPath}:`, error);
         return false;
+    }
+}
+
+export async function purgeOldHashes(oldHashes) {
+    for (const hash in oldHashes) {
+        await Filesystem.deleteFile({
+            path: '/'
+        })
     }
 }
