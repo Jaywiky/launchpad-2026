@@ -3,6 +3,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 
 import UserMap from './components/UserMap';
 import ResourceSheet from './components/ResourceSheet';
+import Settings from './components/Settings';
 import { initializeStorage, writeJsonFile } from './services/storage/fileSystem';
 import { runFullSyncCycle } from './services/sync/syncManager';
 import { initializeBleHardware, stopP2PNetwork } from './services/sync/bleManager';
@@ -14,6 +15,7 @@ const POLL_INTERVAL_MS = 30 * 60 * 1000;
 function App() {
   const pollingRef = useRef(null);
   const [ready, setReady] = useState(false);
+  const [activePage, setActivePage] = useState('home');
 
   useEffect(() => {
     const startPolling = () => {
@@ -86,8 +88,20 @@ function App() {
     );
   }
 
+  if (activePage === 'settings') {
+    return <Settings onClose={() => setActivePage('home')} />;
+  }
+
   return (
     <div className="relative h-screen w-full bg-[#111111] overflow-hidden">
+
+      <button
+        onClick={() => setActivePage('settings')}
+        className="absolute top-4 left-4 z-50 bg-[#222222] border border-[#444444] text-white p-3 rounded-full shadow-lg"
+      >
+        ⚙️
+      </button>
+
       <div className="absolute inset-0 z-0">
         <UserMap />
       </div>
