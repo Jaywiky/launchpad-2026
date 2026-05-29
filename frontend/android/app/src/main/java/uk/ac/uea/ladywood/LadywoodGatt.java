@@ -28,6 +28,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -82,9 +83,9 @@ public class LadywoodGatt extends Plugin {
 
         @Override
         public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId,
-                BluetoothGattCharacteristic characteristic,
-                boolean preparedWrite, boolean responseNeeded,
-                int offset, byte[] value) {
+                                                 BluetoothGattCharacteristic characteristic,
+                                                 boolean preparedWrite, boolean responseNeeded,
+                                                 int offset, byte[] value) {
             if (!hasConnectPermission()) {
                 respond(device, requestId, responseNeeded, BluetoothGatt.GATT_FAILURE, offset, null);
                 return;
@@ -106,7 +107,7 @@ public class LadywoodGatt extends Plugin {
 
         @Override
         public void onCharacteristicReadRequest(BluetoothDevice device, int requestId,
-                int offset, BluetoothGattCharacteristic characteristic) {
+                                                int offset, BluetoothGattCharacteristic characteristic) {
             if (!hasConnectPermission()) {
                 sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null);
                 return;
@@ -190,37 +191,56 @@ public class LadywoodGatt extends Plugin {
             }
             long stamp = envelope.lastModified() * 31 + envelope.length();
             if (stamp != envelopeStamp) {
-                validHashes = parseCategoryHashes(readFileFully(envelope));
+                validHashes = parseEnvelopeHashes(readFileFully(envelope));
                 envelopeStamp = stamp;
             }
             return validHashes;
         }
     }
 
-    private static Set<String> parseCategoryHashes(@Nullable byte[] envelopeBytes) {
+    private static Set<String> parseEnvelopeHashes(@Nullable byte[] envelopeBytes) {
         if (envelopeBytes == null) {
             return Collections.emptySet();
         }
         try {
-            JSONObject categories = new JSONObject(new String(envelopeBytes, StandardCharsets.UTF_8))
-                    .optJSONObject("categories");
-            if (categories == null) {
+            JSONObject root = new JSONObject(new String(envelopeBytes, StandardCharsets.UTF_8));
+            JSONArray datasets = root.optJSONArray("datasets");
+            if (datasets == null) {
                 return Collections.emptySet();
             }
+
             Set<String> hashes = new HashSet<>();
-            for (Iterator<String> keys = categories.keys(); keys.hasNext();) {
-                String value = categories.optString(keys.next(), "");
-                if (!value.isEmpty()
-                        && !value.contains("/")
-                        && !value.contains("\\")
-                        && !value.contains("..")) {
-                    hashes.add(value);
+            for (int i = 0; i < datasets.length(); i++) {
+                JSONObject dataset = datasets.optJSONObject(i);
+                if (dataset == null) {
+                    continue;
+                }
+                addIfSafe(hashes, dataset.optString("data", ""));
+
+                Object translations = dataset.opt("translations");
+                if (translations instanceof JSONObject) {
+                    JSONObject map = (JSONObject) translations;
+                    for (Iterator<String> keys = map.keys(); keys.hasNext();) {
+                        addIfSafe(hashes, map.optString(keys.next(), ""));
+                    }
+                } else if (translations instanceof String) {
+                    addIfSafe(hashes, (String) translations);
                 }
             }
             return hashes;
         } catch (JSONException e) {
             Log.e(TAG, "Malformed " + ENVELOPE_FILE, e);
             return Collections.emptySet();
+        }
+    }
+
+    private static void addIfSafe(Set<String> hashes, String value) {
+        if (value != null
+                && !value.isEmpty()
+                && !value.contains("/")
+                && !value.contains("\\")
+                && !value.contains("..")) {
+            hashes.add(value);
         }
     }
 
@@ -338,7 +358,7 @@ public class LadywoodGatt extends Plugin {
     }
 
     private void respond(BluetoothDevice device, int requestId, boolean responseNeeded,
-            int status, int offset, byte[] value) {
+                         int status, int offset, byte[] value) {
         if (responseNeeded) {
             sendResponse(device, requestId, status, offset, value);
         }

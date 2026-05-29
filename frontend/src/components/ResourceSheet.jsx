@@ -3,55 +3,59 @@ import { motion, useMotionValue, animate } from 'framer-motion';
 import ResourceCard from './ResourceCard';
 import { emptyStorage, readJsonFile, writeJsonFile } from '../services/storage/fileSystem';
 
-const categories = ['All', 'food_bank', 'toilet'];
+const typeFilters = ['All', 'food_bank', 'toilet'];
 
 async function deleteData() {
     await emptyStorage();
-    window.dispatchEvent(new Event('meshSyncUpdated'))
-
+    window.dispatchEvent(new Event('meshSyncUpdated'));
 }
 
 async function seedFakeData() {
     try {
         const envelope = {
             version: 200,
-            timestamp: "2026-05-27T14:00:00Z",
-            categories: {
-                foodbanks: 'hash_food_123',
-                toilets: 'hash_toil_999',
-            },
-            "signature": "ed25519_sig_over_above_fields"
+            datasets: [
+                { data: 'hash_food_123', translations: { en: 'hash_food_en', ur: 'hash_food_ur', pl: 'hash_food_pl' } },
+                { data: 'hash_toil_999', translations: { en: 'hash_toilet_en', ur: 'hash_toil_ur' } },
+            ],
+            signature: 'ed25519_sig_over_above_fields',
         };
 
-        const foodbanks = [
-            {
-                id: 'givefood_1',
-                name: 'Ladywood Food Bank',
-                type: 'food_bank',
-                notes: 'Pay me needed',
-                extended: { referral_required: true },
-            },
-        ];
-
-        const toilets = [
-            {
-                id: 'toiletmap_1',
-                name: "Fucking mc fuck's Broad Street",
-                type: 'toilet',
-                notes: 'Orgy use only',
-                extended: { accessible: true },
-            },
-        ];
+        const dataByHash = {
+            hash_food_123: [
+                {
+                    id: 'givefood_1',
+                    name: 'Ladywood Fuck Bank',
+                    type: 'food_bank',
+                    notes: 'Pay me needed',
+                    extended: { referral_required: true },
+                },
+            ],
+            hash_toil_999: [
+                {
+                    id: 'toiletmap_1',
+                    name: "Fucking mc fuck's Broad Street",
+                    type: 'toilet',
+                    notes: 'Orgy use only',
+                    extended: { accessible: true },
+                },
+            ],
+        };
 
         await writeJsonFile('envelope.json', envelope);
-        await writeJsonFile('json_data/hash_food_123.json', foodbanks);
-        await writeJsonFile('json_data/hash_toil_999.json', toilets);
+
+        for (const dataset of envelope.datasets) {
+            await writeJsonFile(`json_data/${dataset.data}.json`, dataByHash[dataset.data] || []);
+
+            for (const [locale, hash] of Object.entries(dataset.translations || {})) {
+                await writeJsonFile(`json_data/${hash}.json`, { locale, placeholder: true });
+            }
+        }
 
         alert('Fake data seeded. You are now on version 200');
-        window.dispatchEvent(new Event('meshSyncUpdated'))
-
+        window.dispatchEvent(new Event('meshSyncUpdated'));
     } catch (error) {
-        console.error('[App] Failed to seed data:', error);
+        console.error('[ResourceSheet] Failed to seed data:', error);
         alert('Error seeding data.');
     }
 }
@@ -72,30 +76,27 @@ export default function ResourceSheet() {
     useEffect(() => {
         async function loadLocalResources() {
             try {
-                const envelopeResult = await Filesystem.readFile({
-                    path: 'envelope.json',
-                    directory: Directory.Data,
-                    encoding: Encoding.UTF8
-                });
-
-                const envelope = JSON.parse(envelopeResult.data);
+                const envelope = await readJsonFile('envelope.json');
                 let loadedResources = [];
 
-                if (envelope && envelope.categories) {
-                    for (const [categoryName, hash] of Object.entries(envelope.categories)) {
+                if (envelope && Array.isArray(envelope.datasets)) {
+                    for (const dataset of envelope.datasets) {
+                        const hash = dataset?.data;
+                        if (!hash) continue;
                         try {
-                            const categoryData = await readJsonFile(`json_data/${hash}.json`)
-                            loadedResources = [...loadedResources, ...categoryData];
-                            console.log("FUCKCKCKCKCKCKCKCKCKC3", JSON.stringify(loadedResources, null, 2))
+                            const data = await readJsonFile(`json_data/${hash}.json`);
+                            if (Array.isArray(data)) {
+                                loadedResources = [...loadedResources, ...data];
+                            }
                         } catch (fileErr) {
-                            console.error(`Missing data file for hash: ${hash}`);
+                            console.error(`[ResourceSheet] Missing data file for hash: ${hash}`);
                         }
                     }
                 }
 
                 setResources(loadedResources);
             } catch (err) {
-                console.log("No envelope.json found. Device is likely waiting for first sync.");
+                console.log('[ResourceSheet] No envelope yet; waiting for first sync.');
                 setResources([]);
             } finally {
                 setIsLoading(false);
@@ -105,18 +106,15 @@ export default function ResourceSheet() {
         loadLocalResources();
 
         const handleSyncUpdate = () => {
-            console.log("UI detected new mesh data! Refreshing cards...");
+            console.log('[ResourceSheet] Mesh data updated; refreshing.');
             loadLocalResources();
         };
 
         window.addEventListener('meshSyncUpdated', handleSyncUpdate);
-
-        return () => {
-            window.removeEventListener('meshSyncUpdated', handleSyncUpdate);
-        };
+        return () => window.removeEventListener('meshSyncUpdated', handleSyncUpdate);
     }, []);
 
-    const filteredResources = resources.filter(resource => {
+    const filteredResources = resources.filter((resource) => {
         if (activeCategory === 'All') return true;
         return activeCategory === resource.type;
     });
@@ -147,23 +145,14 @@ export default function ResourceSheet() {
         const currentY = sheetY.get();
         const shouldExpand = velocity < -50 || currentY < minY / 2;
 
-        if (shouldExpand) {
-            animate(sheetY, minY, { type: 'spring', damping: 30, stiffness: 300 });
-            setIsExpanded(true);
-        } else {
-            animate(sheetY, maxY, { type: 'spring', damping: 30, stiffness: 300 });
-            setIsExpanded(false);
-        }
+        animate(sheetY, shouldExpand ? minY : maxY, { type: 'spring', damping: 30, stiffness: 300 });
+        setIsExpanded(shouldExpand);
     };
 
     const handleTap = () => {
-        if (isExpanded) {
-            animate(sheetY, maxY, { type: 'spring', damping: 30, stiffness: 300 });
-            setIsExpanded(false);
-        } else {
-            animate(sheetY, minY, { type: 'spring', damping: 30, stiffness: 300 });
-            setIsExpanded(true);
-        }
+        const next = !isExpanded;
+        animate(sheetY, next ? minY : maxY, { type: 'spring', damping: 30, stiffness: 300 });
+        setIsExpanded(next);
     };
 
     return (
@@ -192,18 +181,16 @@ export default function ResourceSheet() {
                     Seed fake data (v200)
                 </button>
 
-
                 <button
                     onClick={deleteData}
                     className="absolute top-4 right-4 z-50 rounded bg-red-500 px-3 py-2 text-sm font-medium text-white shadow-lg"
                 >
                     DELETE ALL DATA
                 </button>
-
             </div>
 
             <div className="px-4 mb-4 flex gap-2 shrink-0 overflow-x-auto">
-                {categories.map(category => (
+                {typeFilters.map((category) => (
                     <button
                         key={category}
                         onClick={(e) => {
@@ -242,7 +229,6 @@ export default function ResourceSheet() {
                     />
                 ))}
             </div>
-
         </motion.div>
     );
 }

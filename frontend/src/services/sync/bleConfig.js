@@ -6,8 +6,8 @@ export const BLE_CONFIG = Object.freeze({
 })
 
 export const TIMING = Object.freeze({
-    SCAN_WINDOW_MS: 3500,
-    CYCLE_INTERVAL_MS: 30000,
+    SCAN_WINDOW_MS: 5500,
+    CYCLE_INTERVAL_MS: 20000,
 })
 
 export const MAX_CHARACTERISTIC_BYTES = 512

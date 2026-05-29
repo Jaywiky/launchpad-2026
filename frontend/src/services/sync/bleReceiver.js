@@ -1,7 +1,15 @@
 import { BleClient } from '@capacitor-community/bluetooth-le'
 
-import { readJsonFile, writeJsonFile, commitFile } from '../storage/fileSystem'
+import { readJsonFile, writeJsonFile, commitFile, deleteFile } from '../storage/fileSystem'
 import { BLE_CONFIG } from './bleConfig'
+
+// BLE is unreliable by nature; transient read/write failures are expected, so retry the
+// individual GATT operations before giving up on the whole sync.
+const GATT_RETRY_ATTEMPTS = 3
+const GATT_RETRY_DELAY_MS = 300
+// Some Android stacks reject the first GATT operation issued immediately after connect, while
+// service discovery / the link is still settling. A brief pause noticeably cuts down on flakiness.
+const POST_CONNECT_SETTLE_MS = 250
 
 let localEnvelope = null
 let localVersion = null
@@ -12,13 +20,29 @@ export function getIsConnecting() {
     return isConnecting
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function withRetry(label, fn) {
+    let lastError
+    for (let attempt = 1; attempt <= GATT_RETRY_ATTEMPTS; attempt++) {
+        try {
+            return await fn()
+        } catch (e) {
+            lastError = e
+            console.warn(`[Receiver] ${label} attempt ${attempt}/${GATT_RETRY_ATTEMPTS} failed:`, e?.message || e)
+            if (attempt < GATT_RETRY_ATTEMPTS) await sleep(GATT_RETRY_DELAY_MS)
+        }
+    }
+    throw lastError
+}
+
 async function loadLocalEnvelope() {
     const previousVersion = localVersion
     try {
-        localEnvelope = (await readJsonFile('envelope.json')) || { version: 0, categories: {} }
+        localEnvelope = (await readJsonFile('envelope.json')) || { version: 0, datasets: [] }
     } catch (e) {
-        console.warn('[Receiver] Could not read envelope.json treating as version 0.', e)
-        localEnvelope = { version: 0, categories: {} }
+        console.warn('[Receiver] Could not read envelope.json; treating as version 0.', e)
+        localEnvelope = { version: 0, datasets: [] }
     }
     localVersion = localEnvelope.version ?? 0
     if (localVersion !== previousVersion) {
@@ -26,6 +50,28 @@ async function loadLocalEnvelope() {
     }
 }
 
+// Every content hash an envelope references: each dataset's data file plus all of its
+// translation files. Identity is the hash itself, so syncing is a set difference over these.
+function collectHashes(envelope) {
+    const hashes = new Set()
+    const datasets = envelope?.datasets
+    if (!Array.isArray(datasets)) return hashes
+
+    for (const dataset of datasets) {
+        if (!dataset) continue
+        if (dataset.data) hashes.add(dataset.data)
+
+        const translations = dataset.translations
+        if (translations && typeof translations === 'object') {
+            for (const hash of Object.values(translations)) {
+                if (hash) hashes.add(hash)
+            }
+        } else if (typeof translations === 'string' && translations) {
+            hashes.add(translations)
+        }
+    }
+    return hashes
+}
 
 export async function startScanning() {
     if (isScanning) return
@@ -94,37 +140,58 @@ function parsePeerVersion(result) {
 
 async function syncFromPeer(peerId) {
     try {
-        await BleClient.connect(peerId)
+        await withRetry('connect', () => BleClient.connect(peerId))
         console.log(`[Receiver] Connected to ${peerId}.`)
+        await sleep(POST_CONNECT_SETTLE_MS)
 
-        const peerEnvelope = await readJson(peerId, BLE_CONFIG.ENVELOPE_UUID)
-        if (!peerEnvelope || typeof peerEnvelope.categories !== 'object') {
-            throw new Error('Peer envelope is missing a categories object')
+        const peerEnvelope = await withRetry('read envelope', () =>
+            readJson(peerId, BLE_CONFIG.ENVELOPE_UUID))
+        if (!peerEnvelope || !Array.isArray(peerEnvelope.datasets)) {
+            throw new Error('Peer envelope is missing a datasets array')
         }
+
+        // TODO: verify peerEnvelope.signature over the canonical envelope bytes BEFORE trusting
+        // anything below. Until that is in place, any peer can advertise arbitrary data.
+
+        const localHashes = collectHashes(localEnvelope)
+        const peerHashes = collectHashes(peerEnvelope)
+
+        // Content addressing: a hash we already hold is byte-identical, so only fetch new ones.
+        const toDownload = [...peerHashes].filter((hash) => !localHashes.has(hash))
 
         await writeJsonFile('tmp/envelope.json', peerEnvelope)
 
-        const downloadedHashes = []
-        for (const [category, hash] of Object.entries(peerEnvelope.categories)) {
-            if (!hash || localEnvelope.categories?.[category] === hash) continue
+        for (const hash of toDownload) {
+            console.log(`[Receiver] Fetching ${hash}.`)
+            await withRetry('write hash', () =>
+                BleClient.write(peerId, BLE_CONFIG.SERVICE_UUID, BLE_CONFIG.DATA_UUID, encodeText(hash)))
 
-            console.log(`[Receiver] Fetching '${category}' (${hash}).`)
-            await BleClient.write(peerId, BLE_CONFIG.SERVICE_UUID, BLE_CONFIG.DATA_UUID, encodeText(hash))
-
-            const jsonData = await readJson(peerId, BLE_CONFIG.DATA_UUID)
+            const jsonData = await withRetry('read data', () =>
+                readJson(peerId, BLE_CONFIG.DATA_UUID))
             await writeJsonFile(`tmp/${hash}.json`, jsonData)
-            downloadedHashes.push(hash)
         }
 
-        for (const hash of downloadedHashes) {
+        // Stage everything first, then commit data files, then the envelope that points at them.
+        for (const hash of toDownload) {
             await commitFile(`tmp/${hash}.json`, `json_data/${hash}.json`)
         }
         await commitFile('tmp/envelope.json', 'envelope.json')
 
+        // Drop any files the new envelope no longer references so storage does not grow forever.
+        const stale = [...localHashes].filter((hash) => !peerHashes.has(hash))
+        for (const hash of stale) {
+            try {
+                await deleteFile(`json_data/${hash}.json`)
+                console.log(`[Receiver] Removed stale ${hash}.`)
+            } catch (e) {
+                console.warn(`[Receiver] Could not delete stale ${hash}:`, e)
+            }
+        }
+
         localEnvelope = peerEnvelope
         localVersion = peerEnvelope.version ?? localVersion
         window.dispatchEvent(new Event('meshSyncUpdated'))
-        console.log(`[Receiver] Sync complete ${downloadedHashes.length} file(s) updated.`)
+        console.log(`[Receiver] Sync complete: ${toDownload.length} added, ${stale.length} removed.`)
     } finally {
         await safeDisconnect(peerId)
     }
