@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { Geolocation } from '@capacitor/geolocation'
 
 function RecenterOnce({ pos }) {
@@ -99,6 +99,12 @@ export default function UserMap() {
 
   return (
     <div className="fixed inset-0 z-0">
+      <style>{`
+        .leaflet-right .leaflet-control-zoom {
+          margin-top: 75px !important;
+          margin-right: 18px !important; 
+        }
+      `}</style>
       {error && (
         <div className="absolute top-2 left-2 right-2 z-[1000] bg-red-100 text-red-700 text-sm px-3 py-2 rounded-lg">
           {error}
@@ -111,7 +117,9 @@ export default function UserMap() {
         zoom={13}
         scrollWheelZoom={true}
         className="h-full w-full z-0"
+        zoomControl={false}
       >
+        <ZoomControl position="topright" />
         <TileLayer
           attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
