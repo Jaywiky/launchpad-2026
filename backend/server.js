@@ -2,21 +2,27 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const errorHandler = require("./src/middleware/errorHandler");
-const { initCache } = require("./src/services/cache");
+const resourceRoutes = require("./src/routes/resources");
+const { bootSync, scheduledSync } = require("./src/services/syncService");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── Middleware ────────────────────────────────────────────────────────────────
+const SYNC_INTERVAL = 24 * 60 * 60 * 1000;
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ── Health check ──────────────────────────────────────────────────────────────
+// Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// ── 404 ───────────────────────────────────────────────────────────────────────
+// Routes
+app.use("/api", resourceRoutes);
+
+// 404
 app.use((req, res) => {
   res.status(404).json({
     status: "error",
@@ -28,14 +34,22 @@ app.use((req, res) => {
   });
 });
 
-// ── Error handler ──────────────────────────────────────────────────────
+// Error handler
 app.use(errorHandler);
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-if (require.main === module) {
-  initCache();
-  app.listen(PORT, () => {
-    console.log(`Launchpad API  →  http://localhost:${PORT}`);
-    console.log(`Env: ${process.env.NODE_ENV || "development"}`);
-  });
-}
+// Boot
+
+app.listen(PORT, async () => {
+  console.log(`Launchpad API -> http://localhost:${PORT}`);
+  console.log(`Env: ${process.env.NODE_ENV || "development"}`);
+
+  // Run boot sync
+  await bootSync();
+
+  // Schedule recurring sync daily
+  setInterval(async () => {
+    await scheduledSync();
+  }, SYNC_INTERVAL);
+});
+
+module.exports = app;
