@@ -49,4 +49,27 @@ async function fetch() {
     );
 }
 
-module.exports = { fetch };
+// Fetch detailed info for a single food bank by id
+async function fetchById(id) {
+  const slug = id.replace("givefood_", "");
+  const url = `${BASE_URL}/foodbank/${slug}/`;
+  const { data } = await axios.get(url, { timeout: 10000 });
+
+  if (!data || data.closed === true) return null;
+
+  const base = mapListItem(data);
+
+  const needs = data.need?.needs
+    ? data.need.needs
+        .split("\n")
+        .map((n) => n.trim())
+        .filter(Boolean)
+    : [];
+
+  return {
+    ...base,
+    extended: { ...base.extended, needs },
+  };
+}
+
+module.exports = { fetch, fetchById };
