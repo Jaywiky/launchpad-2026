@@ -1,8 +1,9 @@
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
-export async function initializeStorage() {
-    const dirs = ['tmp', 'json_data', 'translations']
+const dirs = ['tmp', 'json_data', 'translations']
 
+
+export async function initializeStorage() {
     for (const path of dirs) {
         try {
             await Filesystem.mkdir({
@@ -10,11 +11,31 @@ export async function initializeStorage() {
                 directory: Directory.Data,
                 recursive: true
             })
+            console.warn("Making directory", path)
         } catch (e) {
-            // console.error("Error couldnt initialize directory: ", e)
+            console.error("Error couldnt initialize directory: ", e)
         }
     }
+}
 
+export async function emptyStorage() {
+    console.warn("Deleting Evelope")
+    await deleteFile("envelope.json")
+    for (const path of dirs) {
+        try {
+            await Filesystem.rmdir({
+                path,
+                directory: Directory.Data,
+                recursive: true
+            })
+            console.warn("Deleting", path)
+    
+        } catch (e) {
+            console.error("Failed to delete directory", e)
+        }
+    }
+    console.warn("Initalising Directories")
+    await initializeStorage()
 }
 
 export async function writeJsonFile(path, jsonData) {
@@ -31,6 +52,19 @@ export async function writeJsonFile(path, jsonData) {
     }
     catch (e) {
         console.error("Unable to write file: ", e)
+        return false
+    }
+}
+
+export async function deleteFile(path) {
+    try {
+        await Filesystem.deleteFile({
+            path,
+            directory: Directory.Data,
+        })
+        return true
+    } catch (e) {
+        console.log("Unable to delete file", e)
         return false
     }
 }

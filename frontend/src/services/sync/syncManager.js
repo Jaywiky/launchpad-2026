@@ -1,5 +1,5 @@
-import * as BleManager from './bleManager';
+import * as BleManager from './bleManager'
 
 export async function runFullSyncCycle() {
-    await BleManager.startP2PNetwork();
+    await BleManager.startP2PNetwork()
 }

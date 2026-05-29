@@ -1,14 +1,65 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, animate } from 'framer-motion';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import ResourceCard from './ResourceCard';
+import { emptyStorage, readJsonFile, writeJsonFile } from '../services/storage/fileSystem';
 
 const categories = ['All', 'food_bank', 'toilet'];
+
+async function deleteData() {
+    await emptyStorage();
+    window.dispatchEvent(new Event('meshSyncUpdated'))
+
+}
+
+async function seedFakeData() {
+    try {
+        const envelope = {
+            version: 200,
+            timestamp: "2026-05-27T14:00:00Z",
+            categories: {
+                foodbanks: 'hash_food_123',
+                toilets: 'hash_toil_999',
+            },
+            "signature": "ed25519_sig_over_above_fields"
+        };
+
+        const foodbanks = [
+            {
+                id: 'givefood_1',
+                name: 'Ladywood Food Bank',
+                type: 'food_bank',
+                notes: 'Pay me needed',
+                extended: { referral_required: true },
+            },
+        ];
+
+        const toilets = [
+            {
+                id: 'toiletmap_1',
+                name: "Fucking mc fuck's Broad Street",
+                type: 'toilet',
+                notes: 'Orgy use only',
+                extended: { accessible: true },
+            },
+        ];
+
+        await writeJsonFile('envelope.json', envelope);
+        await writeJsonFile('json_data/hash_food_123.json', foodbanks);
+        await writeJsonFile('json_data/hash_toil_999.json', toilets);
+
+        alert('Fake data seeded. You are now on version 200');
+        window.dispatchEvent(new Event('meshSyncUpdated'))
+
+    } catch (error) {
+        console.error('[App] Failed to seed data:', error);
+        alert('Error seeding data.');
+    }
+}
 
 export default function ResourceSheet() {
     const [resources, setResources] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    
+
     const [activeCategory, setActiveCategory] = useState('All');
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -26,27 +77,16 @@ export default function ResourceSheet() {
                     directory: Directory.Data,
                     encoding: Encoding.UTF8
                 });
-                
+
                 const envelope = JSON.parse(envelopeResult.data);
                 let loadedResources = [];
 
                 if (envelope && envelope.categories) {
                     for (const [categoryName, hash] of Object.entries(envelope.categories)) {
                         try {
-                            const fileResult = await Filesystem.readFile({
-                                path: `json_data/${hash}.json`,
-                                directory: Directory.Data,
-                                encoding: Encoding.UTF8
-                            });
-
-                            console.log("FUCKCKCKCKCKCKCKCKCKC")
-                            
-                            const categoryData = JSON.parse(fileResult.data);
-                            console.log("FUCKCKCKCKCKCKCKCKCKC2")
-
+                            const categoryData = await readJsonFile(`json_data/${hash}.json`)
                             loadedResources = [...loadedResources, ...categoryData];
                             console.log("FUCKCKCKCKCKCKCKCKCKC3", JSON.stringify(loadedResources, null, 2))
-
                         } catch (fileErr) {
                             console.error(`Missing data file for hash: ${hash}`);
                         }
@@ -78,7 +118,7 @@ export default function ResourceSheet() {
 
     const filteredResources = resources.filter(resource => {
         if (activeCategory === 'All') return true;
-        return activeCategory === resource.type; 
+        return activeCategory === resource.type;
     });
 
     const handleTouchStart = (e) => {
@@ -144,6 +184,22 @@ export default function ResourceSheet() {
             >
                 <div className="w-12 h-1.5 bg-gray-500 rounded-full mb-4"></div>
                 <h1 className="text-2xl font-bold w-full text-white">Ladywood Resources</h1>
+
+                <button
+                    onClick={seedFakeData}
+                    className="absolute top-4 left-4 z-50 rounded bg-red-500 px-3 py-2 text-sm font-medium text-white shadow-lg"
+                >
+                    Seed fake data (v200)
+                </button>
+
+
+                <button
+                    onClick={deleteData}
+                    className="absolute top-4 right-4 z-50 rounded bg-red-500 px-3 py-2 text-sm font-medium text-white shadow-lg"
+                >
+                    DELETE ALL DATA
+                </button>
+
             </div>
 
             <div className="px-4 mb-4 flex gap-2 shrink-0 overflow-x-auto">
@@ -168,7 +224,7 @@ export default function ResourceSheet() {
                 {isLoading && (
                     <p className="text-gray-400 text-center mt-10">Loading local data...</p>
                 )}
-                
+
                 {!isLoading && filteredResources.length === 0 && (
                     <div className="text-center mt-10">
                         <p className="text-gray-400">No resources found.</p>
@@ -178,7 +234,7 @@ export default function ResourceSheet() {
 
                 {!isLoading && filteredResources.map((resource, index) => (
                     <ResourceCard
-                        key={resource.id || index} 
+                        key={resource.id || index}
                         name={resource.name}
                         type={resource.type}
                         notes={resource.notes}
@@ -186,6 +242,7 @@ export default function ResourceSheet() {
                     />
                 ))}
             </div>
+
         </motion.div>
     );
 }

@@ -124,9 +124,6 @@ public class LadywoodGatt extends Plugin {
                 return;
             }
 
-            // Hand the stack the remainder from `offset`; it will cap each packet to the
-            // MTU
-            // and request the next slice with a higher offset.
             byte[] chunk = new byte[fileBytes.length - offset];
             System.arraycopy(fileBytes, offset, chunk, 0, chunk.length);
             sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, chunk);
@@ -171,7 +168,7 @@ public class LadywoodGatt extends Plugin {
         }
         byte[] bytes = new byte[(int) file.length()];
         try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
-            in.readFully(bytes); // unlike read(byte[]), guarantees the whole buffer is filled
+            in.readFully(bytes);
             return bytes;
         } catch (IOException e) {
             Log.e(TAG, "Failed to read " + file.getName(), e);
@@ -213,7 +210,6 @@ public class LadywoodGatt extends Plugin {
             Set<String> hashes = new HashSet<>();
             for (Iterator<String> keys = categories.keys(); keys.hasNext();) {
                 String value = categories.optString(keys.next(), "");
-                // Defensive: a category value should never be able to escape json_data/.
                 if (!value.isEmpty()
                         && !value.contains("/")
                         && !value.contains("\\")

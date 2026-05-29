@@ -1,3 +1,3 @@
-import { registerPlugin } from '@capacitor/core';
+import { registerPlugin } from '@capacitor/core'
 
-export const LadywoodGatt = registerPlugin('LadywoodGatt');
+export const LadywoodGatt = registerPlugin('LadywoodGatt')
