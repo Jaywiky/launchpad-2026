@@ -60,9 +60,8 @@ async function seedFakeData() {
     }
 }
 
-export default function ResourceSheet({ resources, isLoading }) {
+export default function ResourceSheet({ resources, isLoading, activeCategory, setActiveCategory }) {
 
-    const [activeCategory, setActiveCategory] = useState('All');
     const [isExpanded, setIsExpanded] = useState(false);
 
     const sheetY = useMotionValue(0);

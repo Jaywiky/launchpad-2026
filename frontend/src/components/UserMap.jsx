@@ -66,7 +66,7 @@ function LocateButton({ pos, loading, onLocate }) {
   )
 }
 
-export default function UserMap({ resources = [] }) {
+export default function UserMap({ resources = [], activeCategory = 'All' }) {
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -108,6 +108,12 @@ export default function UserMap({ resources = [] }) {
     fetchLocation()
   }, [])
 
+  const visibleMarkers = resources.filter((item) => {
+    if (!item) return false;
+    if (activeCategory === 'All') return true;
+    return item.type === activeCategory;
+  });
+
   return (
     <div className="fixed inset-0 z-0">
       <style>{`
@@ -138,7 +144,7 @@ export default function UserMap({ resources = [] }) {
 
         <RecenterOnce pos={userPos} />
 
-        {resources.map((item) => {
+        {visibleMarkers.map((item) => {
           if (!item || !item.lat || !item.lng) return null;
 
           return (

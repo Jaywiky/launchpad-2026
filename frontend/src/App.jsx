@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, act } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 
 import UserMap from './components/UserMap';
@@ -18,6 +18,7 @@ function App() {
   const [activePage, setActivePage] = useState('home');
   const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState('All');
 
   useEffect(() => {
     async function fetchGlobalResources() {
@@ -129,10 +130,10 @@ function App() {
       </button>
 
       <div className="absolute inset-0 z-0">
-        <UserMap resources={resources} />
+        <UserMap resources={resources} activeCategory={activeCategory} />
       </div>
 
-      <ResourceSheet resources={resources} isLoading={isLoading} />
+      <ResourceSheet resources={resources} isLoading={isLoading} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
     </div>
   );
 }
