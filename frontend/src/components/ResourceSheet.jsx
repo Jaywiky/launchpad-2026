@@ -3,7 +3,7 @@ import { motion, useMotionValue, animate } from 'framer-motion';
 import ResourceCard from './ResourceCard';
 import { emptyStorage, readJsonFile, writeJsonFile } from '../services/storage/fileSystem';
 
-const typeFilters = ['All', 'food_bank', 'toilet'];
+const typeFilters = ['All', 'food_bank', 'toilet', 'recycling', 'library', 'green_space'];
 
 async function deleteData() {
     await emptyStorage();
@@ -76,28 +76,43 @@ export default function ResourceSheet() {
     useEffect(() => {
         async function loadLocalResources() {
             try {
-                const envelope = await readJsonFile('envelope.json');
-                let loadedResources = [];
-
-                if (envelope && Array.isArray(envelope.datasets)) {
-                    for (const dataset of envelope.datasets) {
-                        const hash = dataset?.data;
-                        if (!hash) continue;
-                        try {
-                            const data = await readJsonFile(`json_data/${hash}.json`);
-                            if (Array.isArray(data)) {
-                                loadedResources = [...loadedResources, ...data];
-                            }
-                        } catch (fileErr) {
-                            console.error(`[ResourceSheet] Missing data file for hash: ${hash}`);
-                        }
-                    }
+                const response = await fetch('http://localhost:3001/api/resources');
+                const json = await response.json();
+                if (json.status === 'ok' && Array.isArray(json.data)) {
+                    setResources(json.data);
+                } else {
+                    throw new Error('Unexpected API response structure');
                 }
-
-                setResources(loadedResources);
+                
             } catch (err) {
-                console.log('[ResourceSheet] No envelope yet; waiting for first sync.');
-                setResources([]);
+
+                try{
+                    const envelope = await readJsonFile('envelope.json');
+                    
+                    let loadedResources = [];
+                    if (envelope && Array.isArray(envelope.datasets)) {
+                        for (const dataset of envelope.datasets) {
+                            const hash = dataset?.data;
+                            if (!hash) continue;
+                            try {
+                                const data = await readJsonFile(`json_data/${hash}.json`);
+                                if (Array.isArray(data)) {
+                                    loadedResources = [...loadedResources, ...data];
+                                }
+                            } catch (fileErr) {
+                                console.error(`[ResourceSheet] Missing data file for hash: ${hash}`);
+                            }
+                        }
+                        setResources(loadedResources);
+                    } else {
+                        setResources([]);
+                    }
+                    
+                } catch (storageErr) {
+                    console.log('[ResourceSheet] No envelope yet;', storageErr);
+                    setResources([]);
+                    
+                }
             } finally {
                 setIsLoading(false);
             }
