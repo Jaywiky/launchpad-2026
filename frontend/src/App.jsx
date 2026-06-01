@@ -16,8 +16,31 @@ function App() {
   const pollingRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [activePage, setActivePage] = useState('home');
+  const [resources, setResources] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    async function fetchGlobalResources() {
+      try {
+
+        const response = await fetch('http://localhost:3001/api/resources');
+        const json = await response.json();
+
+        if (json.status === 'ok' && Array.isArray(json.data)) {
+          setResources(json.data);
+        }
+      } catch (err) {
+        console.error('[Parent] Error fetching shared resources:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    const handleSyncUpdate = () => {
+      console.log('[ResourceSheet] Mesh data updated; refreshing.');
+      fetchGlobalResources();
+    };
+
     const startPolling = () => {
       if (pollingRef.current) return;
       pollingRef.current = setInterval(runFullSyncCycle, POLL_INTERVAL_MS);
@@ -61,19 +84,22 @@ function App() {
       }
     };
 
+    fetchGlobalResources();
+    window.addEventListener('meshSyncUpdated', handleSyncUpdate);
     boot();
 
-    // const listenerHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-    //   if (isActive) {
-    //     console.log('[App] Foreground: resuming sync.');
-    //     resume();
-    //   } else {
-    //     console.log('[App] Background: pausing sync to save battery.');
-    //     pause();
-    //   }
-    // });
+    const listenerHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        console.log('[App] Foreground: resuming sync.');
+        resume();
+      } else {
+        console.log('[App] Background: pausing sync to save battery.');
+        pause();
+      }
+    });
 
     return () => {
+      window.removeEventListener('meshSyncUpdated', handleSyncUpdate);
       stopPolling();
       stopP2PNetwork();
       listenerHandle.then((listener) => listener.remove());
@@ -103,10 +129,10 @@ function App() {
       </button>
 
       <div className="absolute inset-0 z-0">
-        <UserMap />
+        <UserMap resources={resources} />
       </div>
 
-      <ResourceSheet />
+      <ResourceSheet resources={resources} isLoading={isLoading} />
     </div>
   );
 }
