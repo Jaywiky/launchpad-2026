@@ -18,7 +18,7 @@ function App() {
   const [activePage, setActivePage] = useState('home');
   const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState(['All']);
 
   useEffect(() => {
     async function fetchGlobalResources() {

@@ -66,7 +66,7 @@ function LocateButton({ pos, loading, onLocate }) {
   )
 }
 
-export default function UserMap({ resources = [], activeCategory = 'All' }) {
+export default function UserMap({ resources = [], activeCategory = ['All'] }) {
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -110,8 +110,8 @@ export default function UserMap({ resources = [], activeCategory = 'All' }) {
 
   const visibleMarkers = resources.filter((item) => {
     if (!item) return false;
-    if (activeCategory === 'All') return true;
-    return item.type === activeCategory;
+    if (activeCategory.includes('All')) return true;
+    return activeCategory.includes(item.type);
   });
 
   return (
