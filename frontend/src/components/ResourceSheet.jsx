@@ -60,9 +60,7 @@ async function seedFakeData() {
     }
 }
 
-export default function ResourceSheet() {
-    const [resources, setResources] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+export default function ResourceSheet({ resources, isLoading }) {
 
     const [activeCategory, setActiveCategory] = useState('All');
     const [isExpanded, setIsExpanded] = useState(false);
@@ -72,62 +70,6 @@ export default function ResourceSheet() {
 
     const minY = -(window.innerHeight * 0.55);
     const maxY = 0;
-
-    useEffect(() => {
-        async function loadLocalResources() {
-            try {
-                const response = await fetch('http://localhost:3001/api/resources');
-                const json = await response.json();
-                if (json.status === 'ok' && Array.isArray(json.data)) {
-                    setResources(json.data);
-                } else {
-                    throw new Error('Unexpected API response structure');
-                }
-                
-            } catch (err) {
-
-                try{
-                    const envelope = await readJsonFile('envelope.json');
-                    
-                    let loadedResources = [];
-                    if (envelope && Array.isArray(envelope.datasets)) {
-                        for (const dataset of envelope.datasets) {
-                            const hash = dataset?.data;
-                            if (!hash) continue;
-                            try {
-                                const data = await readJsonFile(`json_data/${hash}.json`);
-                                if (Array.isArray(data)) {
-                                    loadedResources = [...loadedResources, ...data];
-                                }
-                            } catch (fileErr) {
-                                console.error(`[ResourceSheet] Missing data file for hash: ${hash}`);
-                            }
-                        }
-                        setResources(loadedResources);
-                    } else {
-                        setResources([]);
-                    }
-                    
-                } catch (storageErr) {
-                    console.log('[ResourceSheet] No envelope yet;', storageErr);
-                    setResources([]);
-                    
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        }
-
-        loadLocalResources();
-
-        const handleSyncUpdate = () => {
-            console.log('[ResourceSheet] Mesh data updated; refreshing.');
-            loadLocalResources();
-        };
-
-        window.addEventListener('meshSyncUpdated', handleSyncUpdate);
-        return () => window.removeEventListener('meshSyncUpdated', handleSyncUpdate);
-    }, []);
 
     const filteredResources = resources.filter((resource) => {
         if (activeCategory === 'All') return true;
@@ -217,7 +159,7 @@ export default function ResourceSheet() {
                             : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
                             }`}
                     >
-                        {category}
+                        {category.replace('_', ' ')}
                     </button>
                 ))}
             </div>

@@ -2,6 +2,17 @@ import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { Geolocation } from '@capacitor/geolocation'
 
+const getMarkerColor = (type) => {
+  switch (type) {
+    case 'food_bank': return '#2E7D32';   // Deep Green
+    case 'toilet': return '#1565C0';      // Soft Blue
+    case 'library': return '#EF6C00';     // Warm Orange
+    case 'recycling': return '#00838F';   // Teal
+    case 'green_space': return '#558B2F'; // Light Olive Green
+    default: return '#757575';            // Slate Grey
+  }
+}
+
 function RecenterOnce({ pos }) {
   const map = useMap()
   const [hasRecentered, setHasRecentered] = useState(false)
@@ -55,7 +66,7 @@ function LocateButton({ pos, loading, onLocate }) {
   )
 }
 
-export default function UserMap() {
+export default function UserMap({ resources = [] }) {
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -86,7 +97,7 @@ export default function UserMap() {
     } catch (err) {
       console.error('Location error:', err)
       setError('Could not get location')
-      setUserPos([52.475109, -1.922240])
+      setUserPos([52.483, -1.913])
       setIsRealPos(false)
     } finally {
       setLoading(false)
@@ -126,6 +137,45 @@ export default function UserMap() {
         />
 
         <RecenterOnce pos={userPos} />
+
+        {resources.map((item) => {
+          if (!item || !item.lat || !item.lng) return null;
+
+          return (
+            <CircleMarker
+              key={item.id}
+              center={[Number(item.lat), Number(item.lng)]}
+              radius={9}
+              pathOptions={{
+                fillColor: getMarkerColor(item.type),
+                fillOpacity: 0.85,
+                color: '#FFFFFF',
+                weight: 2,
+              }}
+            >
+              <Popup>
+                <div className="text-black font-sans min-w-[160px]">
+                  <h3 className="font-bold text-sm leading-tight mb-0.5">{item.name}</h3>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
+                    {item.type.replace('_', ' ')}
+                  </span>
+
+                  {item.address && (
+                    <p className="text-xs text-gray-600 mt-1.5 border-t border-gray-100 pt-1">
+                      📍 {item.address}
+                    </p>
+                  )}
+
+                  {item.opening_hours && (
+                    <p className="text-xs text-blue-700 font-medium mt-1">
+                      🕒 {item.opening_hours}
+                    </p>
+                  )}
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
 
         {userPos && (
           <>
