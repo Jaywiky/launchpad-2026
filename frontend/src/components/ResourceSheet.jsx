@@ -4,6 +4,7 @@ import ResourceCard from './ResourceCard';
 import { emptyStorage, readJsonFile, writeJsonFile } from '../services/storage/fileSystem';
 
 const typeFilters = ['All', 'food_bank', 'toilet', 'recycling', 'library', 'green_space'];
+const specificCategories = ['food_bank', 'toilet', 'recycling', 'library', 'green_space'];
 
 async function deleteData() {
     await emptyStorage();
@@ -60,9 +61,8 @@ async function seedFakeData() {
     }
 }
 
-export default function ResourceSheet({ resources, isLoading }) {
+export default function ResourceSheet({ resources, isLoading, activeCategory, setActiveCategory }) {
 
-    const [activeCategory, setActiveCategory] = useState('All');
     const [isExpanded, setIsExpanded] = useState(false);
 
     const sheetY = useMotionValue(0);
@@ -72,10 +72,32 @@ export default function ResourceSheet({ resources, isLoading }) {
     const maxY = 0;
 
     const filteredResources = resources.filter((resource) => {
-        if (activeCategory === 'All') return true;
-        return activeCategory === resource.type;
+        if (!resource) return false;
+        if (activeCategory.includes('All')) return true;
+        return activeCategory.includes(resource.type);
     });
 
+    const handleFilterClick = (category) => {
+        if (category === 'All') {
+            setActiveCategory(['All']);
+            return;
+        }
+
+
+        let newSelection = activeCategory.filter(c => c !== 'All');
+
+        if (newSelection.includes(category)) {
+            newSelection = newSelection.filter(c => c !== category);
+        } else {
+            newSelection.push(category);
+        }
+
+        if (newSelection.length === 0 || newSelection.length === specificCategories.length) {
+            setActiveCategory(['All']);
+        } else {
+            setActiveCategory(newSelection);
+        }
+    }
     const handleTouchStart = (e) => {
         const touch = e.touches[0];
         dragRef.current = {
@@ -147,21 +169,25 @@ export default function ResourceSheet({ resources, isLoading }) {
             </div>
 
             <div className="px-4 mb-4 flex gap-2 shrink-0 overflow-x-auto">
-                {typeFilters.map((category) => (
-                    <button
-                        key={category}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveCategory(category);
-                        }}
-                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeCategory === category
-                            ? 'bg-[#e2f0d9] text-green-900'
-                            : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
-                            }`}
-                    >
-                        {category.replace('_', ' ')}
-                    </button>
-                ))}
+                {typeFilters.map((category) => {
+                    const isActive = activeCategory.includes(category);
+
+                    return (
+                        <button
+                            key={category}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleFilterClick(category);
+                            }}
+                            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isActive
+                                    ? 'bg-[#e2f0d9] text-green-900'
+                                    : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
+                                }`}
+                        >
+                            {category.replace('_', ' ')}
+                        </button>
+                    );
+                })}
             </div>
 
             <div className="px-4 pb-8 overflow-y-auto flex-1 space-y-4">
