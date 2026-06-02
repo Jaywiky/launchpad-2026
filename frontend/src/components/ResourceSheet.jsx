@@ -1,11 +1,23 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, useMotionValue, animate } from 'framer-motion';
-import { useTranslation } from 'react-i18next'; 
+import { useTranslation } from 'react-i18next';
 import ResourceCard from './ResourceCard';
-import { emptyStorage, readJsonFile, writeJsonFile } from '../services/storage/fileSystem';
+import { emptyStorage, writeJsonFile } from '../services/storage/fileSystem';
 
 const typeFilters = ['All', 'food_bank', 'toilet', 'recycling', 'library', 'green_space'];
 const specificCategories = ['food_bank', 'toilet', 'recycling', 'library', 'green_space'];
+
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
 
 async function deleteData() {
     await emptyStorage();
@@ -29,6 +41,8 @@ async function seedFakeData() {
                     id: 'givefood_1',
                     name: 'Ladywood Food Bank',
                     type: 'food_bank',
+                    lat: 52.4814,
+                    lng: -1.9123,
                     notes: 'Referral needed',
                     extended: { referral_required: true },
                 },
@@ -38,6 +52,8 @@ async function seedFakeData() {
                     id: 'toiletmap_1',
                     name: "Broad Street Public Restrooms",
                     type: 'toilet',
+                    lat: 52.4782,
+                    lng: -1.9101,
                     notes: 'Customer use only',
                     extended: { accessible: true },
                 },
@@ -62,8 +78,8 @@ async function seedFakeData() {
     }
 }
 
-export default function ResourceSheet({ resources, isLoading, activeCategory, setActiveCategory }) {
-    const { t } = useTranslation(); 
+export default function ResourceSheet({ resources, isLoading, activeCategory, setActiveCategory, userPos, onCardClick }) {
+    const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
 
     const sheetY = useMotionValue(0);
@@ -76,6 +92,18 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
         if (!resource) return false;
         if (activeCategory.includes('All')) return true;
         return activeCategory.includes(resource.type);
+    });
+
+    const sortedResources = filteredResources.map((resource) => {
+        if (!resource || !resource.lat || !resource.lng || !userPos) {
+            return { ...resource, distance: null };
+        }
+        const dist = calculateDistance(userPos[0], userPos[1], Number(resource.lat), Number(resource.lng));
+        return { ...resource, distance: dist };
+    }).sort((a, b) => {
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        return a.distance - b.distance;
     });
 
     const handleFilterClick = (category) => {
@@ -187,8 +215,8 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                                 handleFilterClick(category);
                             }}
                             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${isActive
-                                    ? 'bg-[#e2f0d9] text-green-900'
-                                    : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
+                                ? 'bg-[#e2f0d9] text-green-900'
+                                : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
                                 }`}
                         >
                             {t(category.toLowerCase())}
@@ -202,20 +230,26 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                     <p className="text-gray-400 text-center mt-10">{t('loading_local_data')}</p>
                 )}
 
-                {!isLoading && filteredResources.length === 0 && (
+                {!isLoading && sortedResources.length === 0 && (
                     <div className="text-center mt-10">
                         <p className="text-gray-400">{t('no_resources_found')}</p>
                         <p className="text-gray-600 text-sm mt-2">{t('waiting_to_sync')}</p>
                     </div>
                 )}
 
-                {!isLoading && filteredResources.map((resource, index) => (
+                {!isLoading && sortedResources.map((resource, index) => (
                     <ResourceCard
                         key={resource.id || index}
                         name={resource.name}
                         type={resource.type}
                         notes={resource.notes}
                         extended={resource.extended}
+                        distance={resource.distance}
+                        onClick={() => {
+                            if (resource.lat && resource.lng && onCardClick) {
+                                onCardClick([Number(resource.lat), Number(resource.lng)]);
+                            }
+                        }}
                     />
                 ))}
             </div>

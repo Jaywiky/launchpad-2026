@@ -22,6 +22,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(['All']);
 
+  const [userPos, setUserPos] = useState(null);
+  const [selectedPos, setSelectedPos] = useState(null);
+
   useEffect(() => {
     async function fetchGlobalResources() {
       try {
@@ -123,7 +126,6 @@ function App() {
 
   return (
     <div className="relative h-screen w-full bg-[#111111] overflow-hidden">
-
       <button
         onClick={() => setActivePage('settings')}
         className="absolute top-4 left-4 z-50 bg-[#222222] border border-[#444444] text-white p-3 rounded-full shadow-lg"
@@ -132,10 +134,22 @@ function App() {
       </button>
 
       <div className="absolute inset-0 z-0">
-        <UserMap resources={resources} activeCategory={activeCategory} />
+        <UserMap 
+          resources={resources} 
+          activeCategory={activeCategory} 
+          onLocationUpdate={setUserPos} 
+          selectedPos={selectedPos}
+        />
       </div>
 
-      <ResourceSheet resources={resources} isLoading={isLoading} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+      <ResourceSheet 
+        resources={resources} 
+        isLoading={isLoading} 
+        activeCategory={activeCategory} 
+        setActiveCategory={setActiveCategory} 
+        userPos={userPos}
+        onCardClick={setSelectedPos}
+      />
     </div>
   );
 }
