@@ -1,7 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n'; 
+import i18n from '../i18n';
+import { useBleSync } from './useBleSync';
+
 export default function Settings({ onClose }) {
   const { t } = useTranslation();
+  const { isActive, toggleSync } = useBleSync();
 
   const currentLang = i18n.language || 'en';
   const isSelected = (langCode) => currentLang.startsWith(langCode);
@@ -17,11 +20,7 @@ export default function Settings({ onClose }) {
         console.error(`[Settings] Core engine failed to switch languages:`, err);
       });
 
-    if (lng === 'ur') {
-      document.body.dir = 'rtl';
-    } else {
-      document.body.dir = 'ltr';
-    }
+    document.body.dir = (lng === 'ur') ? 'rtl' : 'ltr';
   };
 
   return (
@@ -40,6 +39,7 @@ export default function Settings({ onClose }) {
       </div>
 
       <div className="space-y-6">
+        {/* Language Preferences Section */}
         <div className="bg-[#222222] p-4 rounded-xl border border-[#333333]">
           <h2 className="text-lg font-semibold mb-2">{t('language_pref')}</h2>
           <p className="text-sm text-gray-400 mb-4">{t('choose_lang')}</p>
@@ -47,33 +47,37 @@ export default function Settings({ onClose }) {
           <div className="flex gap-2">
             <button
               onClick={() => changeLanguage('en')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isSelected('en') ? 'bg-[#e2f0d9] text-green-900' : 'bg-[#333333] text-gray-400'
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isSelected('en') ? 'bg-[#e2f0d9] text-green-900' : 'bg-[#333333] text-gray-400'}`}
             >
               English
             </button>
             <button
               onClick={() => changeLanguage('pl')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isSelected('pl') ? 'bg-[#e2f0d9] text-green-900' : 'bg-[#333333] text-gray-400'
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isSelected('pl') ? 'bg-[#e2f0d9] text-green-900' : 'bg-[#333333] text-gray-400'}`}
             >
               Polski
             </button>
             <button
               onClick={() => changeLanguage('ur')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isSelected('ur') ? 'bg-[#e2f0d9] text-green-900' : 'bg-[#333333] text-gray-400'
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isSelected('ur') ? 'bg-[#e2f0d9] text-green-900' : 'bg-[#333333] text-gray-400'}`}
             >
               اردو
             </button>
           </div>
         </div>
 
+        {/* P2P Sync Section */}
         <div className="bg-[#222222] p-4 rounded-xl border border-[#333333]">
           <h2 className="text-lg font-semibold mb-2">Toggle P2P</h2>
           <p className="text-sm text-gray-400">Toggle the ability to download data from Bluetooth.</p>
-          <button className="mt-4 bg-red-900/30 text-red-400 border border-red-900/50 px-4 py-2 rounded-lg text-sm font-medium">
-            Toggle P2P
+          <button
+            onClick={toggleSync}
+            className={`mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${isActive
+                ? 'bg-green-900/30 text-green-400 border-green-900/50'
+                : 'bg-red-900/30 text-red-400 border-red-900/50'
+              }`}
+          >
+            {isActive ? 'Stop P2P Sync' : 'Start P2P Sync'}
           </button>
         </div>
       </div>

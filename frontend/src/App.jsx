@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { App as CapacitorApp } from '@capacitor/app'
+import { useTranslation as useI18nTranslation } from 'react-i18next';
 
 import UserMap from './components/UserMap'
 import ResourceSheet from './components/ResourceSheet'
@@ -10,29 +11,12 @@ import { collectHashes, loadLocalEnvelope } from './services/sync/syncEngine'
 import { useBleSync } from './hooks/useBleSync'
 
 function App() {
-  const [ready, setReady] = useState(false)
-  const [activePage, setActivePage] = useState('home')
-  const [resources, setResources] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState(['All'])
-
-  const { isActive, toggleSync } = useBleSync(true)
-
-  const activePageRef = useRef(activePage)
-  useEffect(() => { activePageRef.current = activePage }, [activePage])
-
-  const updateResources = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      const env = await loadLocalEnvelope()
-      const hashes = Array.from(collectHashes(env))
-      const promises = hashes.map(hash => readJsonFile(`json_data/${hash}.json`))
-      const results = await Promise.all(promises)
-      const combined = results.flat()
-      setResources(combined)
-    } catch (error) { console.error('[App] Failed to update local resources:', error) }
-    finally { setIsLoading(false) }
-  }, [])
+  const pollingRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  const [activePage, setActivePage] = useState('home');
+  const [resources, setResources] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState(['All']);
 
   useEffect(() => {
     const boot = async () => {
@@ -72,12 +56,11 @@ function App() {
   if (!ready) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#111111] text-sm text-white/70">
-        Starting up…
+        {t('starting_up')}
       </div>
     )
   }
 
-  // 3. Settings page is an overlay controlled by App state
   if (activePage === 'settings') {
     return (
       <Settings
@@ -98,15 +81,15 @@ function App() {
       </button>
 
       <div className="absolute inset-0 z-0">
-        <UserMap resources={resources} activeCategory={activeCategory} />
+        <UserMap 
+          resources={resources} 
+          activeCategory={activeCategory} 
+          onLocationUpdate={setUserPos} 
+          selectedPos={selectedPos}
+        />
       </div>
 
-      <ResourceSheet
-        resources={resources}
-        isLoading={isLoading}
-        activeCategory={activeCategory}
-        setActiveCategory={setActiveCategory}
-      />
+      <ResourceSheet resources={resources} isLoading={isLoading} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
     </div>
   )
 }
