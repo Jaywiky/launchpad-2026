@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { Geolocation } from '@capacitor/geolocation'
+import { useTranslation } from 'react-i18next'
 
 const getMarkerColor = (type) => {
   switch (type) {
-    case 'food_bank': return '#2E7D32';   // Deep Green
-    case 'toilet': return '#1565C0';      // Soft Blue
-    case 'library': return '#EF6C00';     // Warm Orange
-    case 'recycling': return '#00838F';   // Teal
-    case 'green_space': return '#558B2F'; // Light Olive Green
-    default: return '#757575';            // Slate Grey
+    case 'food_bank': return '#2E7D32';   
+    case 'toilet': return '#1565C0';      
+    case 'library': return '#EF6C00';     
+    case 'recycling': return '#00838F';   
+    case 'green_space': return '#558B2F'; 
+    default: return '#757575';            
   }
 }
 
@@ -26,8 +27,6 @@ function RecenterOnce({ pos }) {
 
   return null
 }
-
-
 
 function LocateButton({ pos, loading, onLocate }) {
   const map = useMap()
@@ -67,6 +66,7 @@ function LocateButton({ pos, loading, onLocate }) {
 }
 
 export default function UserMap({ resources = [], activeCategory = ['All'] }) {
+  const { t } = useTranslation()
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -163,7 +163,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'] }) {
                 <div className="text-black font-sans min-w-[160px]">
                   <h3 className="font-bold text-sm leading-tight mb-0.5">{item.name}</h3>
                   <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
-                    {item.type.replace('_', ' ')}
+                    {t(item.type.toLowerCase())}
                   </span>
 
                   {item.address && (
@@ -205,9 +205,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'] }) {
                 color: '#ffffff',
                 weight: 3,
               }}
-            >
-              <Popup>{isRealPos ? 'You are here' : 'Approximate location'}</Popup>
-            </CircleMarker>
+            />
           </>
         )}
 

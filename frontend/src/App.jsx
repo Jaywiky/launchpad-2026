@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, act } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
+import { useTranslation as useI18nTranslation } from 'react-i18next';
 
 import UserMap from './components/UserMap';
 import ResourceSheet from './components/ResourceSheet';
@@ -13,6 +14,7 @@ const POLL_INTERVAL_MS = 30 * 60 * 1000;
 
 
 function App() {
+  const { t } = useI18nTranslation();
   const pollingRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [activePage, setActivePage] = useState('home');
@@ -110,7 +112,7 @@ function App() {
   if (!ready) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#111111] text-sm text-white/70">
-        Starting up…
+        {t('starting_up')}
       </div>
     );
   }
