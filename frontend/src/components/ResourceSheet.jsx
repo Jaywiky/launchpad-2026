@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, animate } from 'framer-motion';
+import { useTranslation } from 'react-i18next'; 
 import ResourceCard from './ResourceCard';
 import { emptyStorage, readJsonFile, writeJsonFile } from '../services/storage/fileSystem';
 
@@ -26,18 +27,18 @@ async function seedFakeData() {
             hash_food_123: [
                 {
                     id: 'givefood_1',
-                    name: 'Ladywood Fuck Bank',
+                    name: 'Ladywood Food Bank',
                     type: 'food_bank',
-                    notes: 'Pay me needed',
+                    notes: 'Referral needed',
                     extended: { referral_required: true },
                 },
             ],
             hash_toil_999: [
                 {
                     id: 'toiletmap_1',
-                    name: "Fucking mc fuck's Broad Street",
+                    name: "Broad Street Public Restrooms",
                     type: 'toilet',
-                    notes: 'Orgy use only',
+                    notes: 'Customer use only',
                     extended: { accessible: true },
                 },
             ],
@@ -62,7 +63,7 @@ async function seedFakeData() {
 }
 
 export default function ResourceSheet({ resources, isLoading, activeCategory, setActiveCategory }) {
-
+    const { t } = useTranslation(); 
     const [isExpanded, setIsExpanded] = useState(false);
 
     const sheetY = useMotionValue(0);
@@ -83,7 +84,6 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
             return;
         }
 
-
         let newSelection = activeCategory.filter(c => c !== 'All');
 
         if (newSelection.includes(category)) {
@@ -97,7 +97,8 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
         } else {
             setActiveCategory(newSelection);
         }
-    }
+    };
+
     const handleTouchStart = (e) => {
         const touch = e.touches[0];
         dragRef.current = {
@@ -151,20 +152,26 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                 onClick={handleTap}
             >
                 <div className="w-12 h-1.5 bg-gray-500 rounded-full mb-4"></div>
-                <h1 className="text-2xl font-bold w-full text-white">Ladywood Resources</h1>
+                <h1 className="text-2xl font-bold w-full text-white">{t('ladywood_resources')}</h1>
 
                 <button
-                    onClick={seedFakeData}
-                    className="absolute top-4 left-4 z-50 rounded bg-red-500 px-3 py-2 text-sm font-medium text-white shadow-lg"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        seedFakeData();
+                    }}
+                    className="absolute top-4 left-4 z-50 rounded bg-red-500 px-2 py-1 text-xs font-medium text-white shadow-lg"
                 >
-                    Seed fake data (v200)
+                    Seed (v200)
                 </button>
 
                 <button
-                    onClick={deleteData}
-                    className="absolute top-4 right-4 z-50 rounded bg-red-500 px-3 py-2 text-sm font-medium text-white shadow-lg"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteData();
+                    }}
+                    className="absolute top-4 right-4 z-50 rounded bg-red-500 px-2 py-1 text-xs font-medium text-white shadow-lg"
                 >
-                    DELETE ALL DATA
+                    WIPE DATA
                 </button>
             </div>
 
@@ -179,12 +186,12 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                                 e.stopPropagation();
                                 handleFilterClick(category);
                             }}
-                            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${isActive
+                            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${isActive
                                     ? 'bg-[#e2f0d9] text-green-900'
                                     : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
                                 }`}
                         >
-                            {category.replace('_', ' ')}
+                            {t(category.toLowerCase())}
                         </button>
                     );
                 })}
@@ -192,13 +199,13 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
 
             <div className="px-4 pb-8 overflow-y-auto flex-1 space-y-4">
                 {isLoading && (
-                    <p className="text-gray-400 text-center mt-10">Loading local data...</p>
+                    <p className="text-gray-400 text-center mt-10">{t('loading_local_data')}</p>
                 )}
 
                 {!isLoading && filteredResources.length === 0 && (
                     <div className="text-center mt-10">
-                        <p className="text-gray-400">No resources found.</p>
-                        <p className="text-gray-600 text-sm mt-2">Waiting to sync with nearby peers...</p>
+                        <p className="text-gray-400">{t('no_resources_found')}</p>
+                        <p className="text-gray-600 text-sm mt-2">{t('waiting_to_sync')}</p>
                     </div>
                 )}
 
