@@ -1,127 +1,95 @@
-import { useRef, useEffect, useState, act } from 'react';
-import { App as CapacitorApp } from '@capacitor/app';
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { App as CapacitorApp } from '@capacitor/app'
 
-import UserMap from './components/UserMap';
-import ResourceSheet from './components/ResourceSheet';
-import Settings from './components/Settings';
-import { initializeStorage, writeJsonFile } from './services/storage/fileSystem';
-import { runFullSyncCycle } from './services/sync/syncManager';
-import { initializeBleHardware, stopP2PNetwork } from './services/sync/bleManager';
-
-const POLL_INTERVAL_MS = 30 * 60 * 1000;
-
-
+import UserMap from './components/UserMap'
+import ResourceSheet from './components/ResourceSheet'
+import Settings from './components/Settings'
+import { initializeStorage, readJsonFile } from './services/storage/fileSystem'
+import { startSyncManager, stopSyncManager } from './services/sync/syncManager'
+import { collectHashes, loadLocalEnvelope } from './services/sync/syncEngine'
+import { useBleSync } from './hooks/useBleSync'
 
 function App() {
-  const pollingRef = useRef(null);
-  const [ready, setReady] = useState(false);
-  const [activePage, setActivePage] = useState('home');
-  const [resources, setResources] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState(['All']);
+  const [ready, setReady] = useState(false)
+  const [activePage, setActivePage] = useState('home')
+  const [resources, setResources] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeCategory, setActiveCategory] = useState(['All'])
+
+  const { isActive, toggleSync } = useBleSync(true)
+
+  const activePageRef = useRef(activePage)
+  useEffect(() => { activePageRef.current = activePage }, [activePage])
+
+  const updateResources = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const env = await loadLocalEnvelope()
+      const hashes = Array.from(collectHashes(env))
+      const promises = hashes.map(hash => readJsonFile(`json_data/${hash}.json`))
+      const results = await Promise.all(promises)
+      const combined = results.flat()
+      setResources(combined)
+    } catch (error) { console.error('[App] Failed to update local resources:', error) }
+    finally { setIsLoading(false) }
+  }, [])
 
   useEffect(() => {
-    async function fetchGlobalResources() {
-      try {
-
-        const response = await fetch('http://localhost:3001/api/resources');
-        const json = await response.json();
-
-        if (json.status === 'ok' && Array.isArray(json.data)) {
-          setResources(json.data);
-        }
-      } catch (err) {
-        console.error('[Parent] Error fetching shared resources:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    const handleSyncUpdate = () => {
-      console.log('[ResourceSheet] Mesh data updated; refreshing.');
-      fetchGlobalResources();
-    };
-
-    const startPolling = () => {
-      if (pollingRef.current) return;
-      pollingRef.current = setInterval(runFullSyncCycle, POLL_INTERVAL_MS);
-      console.log('[App] Polling started.');
-    };
-
-    const stopPolling = () => {
-      if (!pollingRef.current) return;
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-      console.log('[App] Polling stopped.');
-    };
-
-    const resume = async () => {
-      await runFullSyncCycle();
-      startPolling();
-    };
-
-    const pause = async () => {
-      stopPolling();
-      await stopP2PNetwork();
-    };
-
     const boot = async () => {
       try {
-        console.log('[App] Initializing local storage...');
-        await initializeStorage();
+        console.log("[App] Initalising storage")
+        await initializeStorage()
+        console.log("[App] Starting Sync Manager")
+        await startSyncManager()
+        console.log("[App] Loading inital resources")
+        await updateResources()
+      } catch (error) { console.error('[App] Critical error during boot:', error) }
+      finally { setReady(true) }
+    }
 
-        console.log('[App] Initializing Bluetooth...');
-        const bleReady = await initializeBleHardware();
-        if (!bleReady) {
-          console.warn('[App] Bluetooth not ready; continuing without the mesh.');
-        }
-
-        console.log('[App] Running initial sync...');
-        await resume();
-      } catch (error) {
-        console.error('[App] Critical error during boot:', error);
-      } finally {
-        setReady(true);
-      }
-    };
-
-    fetchGlobalResources();
-    window.addEventListener('meshSyncUpdated', handleSyncUpdate);
-    boot();
+    boot()
 
     const listenerHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        console.log('[App] Foreground: resuming sync.');
-        resume();
-      } else {
-        console.log('[App] Background: pausing sync to save battery.');
-        pause();
-      }
-    });
+      if (isActive) startSyncManager()
+      else stopSyncManager()
+    })
+
+    window.addEventListener('resourceUpdated', updateResources)
+
+    const backButtonListener = CapacitorApp.addListener('backButton', () => {
+      if (activePageRef.current === 'settings') setActivePage('home')
+      else CapacitorApp.exitApp()
+    })
 
     return () => {
-      window.removeEventListener('meshSyncUpdated', handleSyncUpdate);
-      stopPolling();
-      stopP2PNetwork();
-      listenerHandle.then((listener) => listener.remove());
-    };
-  }, []);
+      stopSyncManager()
+      window.removeEventListener('resourceUpdated', updateResources)
+      listenerHandle.then(l => l.remove())
+      backButtonListener.then(l => l.remove())
+    }
+  }, [updateResources])
 
   if (!ready) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#111111] text-sm text-white/70">
         Starting up…
       </div>
-    );
+    )
   }
 
+  // 3. Settings page is an overlay controlled by App state
   if (activePage === 'settings') {
-    return <Settings onClose={() => setActivePage('home')} />;
+    return (
+      <Settings
+        onClose={() => setActivePage('home')}
+        isActive={isActive}
+        toggleSync={toggleSync}
+      />
+    )
   }
 
   return (
     <div className="relative h-screen w-full bg-[#111111] overflow-hidden">
-
       <button
         onClick={() => setActivePage('settings')}
         className="absolute top-4 left-4 z-50 bg-[#222222] border border-[#444444] text-white p-3 rounded-full shadow-lg"
@@ -133,9 +101,14 @@ function App() {
         <UserMap resources={resources} activeCategory={activeCategory} />
       </div>
 
-      <ResourceSheet resources={resources} isLoading={isLoading} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+      <ResourceSheet
+        resources={resources}
+        isLoading={isLoading}
+        activeCategory={activeCategory}
+        setActiveCategory={setActiveCategory}
+      />
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

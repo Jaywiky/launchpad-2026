@@ -1,6 +1,7 @@
 const pool = require("../../database/db");
 const givefood = require("../apis/givefood");
 const overpass = require("../apis/overpass");
+const { buildManifest } = require("./manifestService");
 
 const SOURCES = [
   { name: "givefood", ttl: 24 * 60 * 60 * 1000 },
@@ -116,38 +117,43 @@ async function syncSource(sourceName) {
   console.log(`Syncing source: ${sourceName} completed in ${elapsed} seconds`);
 }
 
-// Boot sync - runs on server start up
-async function bootSync() {
-  console.log("Starting boot sync...");
+async function refreshSources() {
+  let synced = false;
   for (const source of SOURCES) {
     try {
-      const needsUpdate = await sourceNeedsUpdate(source.name, source.ttl);
-      if (needsUpdate) {
+      if (await sourceNeedsUpdate(source.name, source.ttl)) {
         await syncSource(source.name);
+        synced = true;
       } else {
         console.log(`Source ${source.name} is up to date, skipping sync.`);
       }
     } catch (err) {
-      console.error(`Boot sync failed for source ${source.name}:`, err.message);
+      console.error(`Sync failed for source ${source.name}:`, err.message);
     }
   }
+  return synced;
+}
+
+async function rebuildManifest() {
+  try {
+    const manifest = await buildManifest();
+    console.log(`Manifest rebuilt (version ${manifest.version}).`);
+  } catch (err) {
+    console.error("Manifest build failed:", err.message);
+  }
+}
+
+async function bootSync() {
+  console.log("Starting boot sync...");
+  await refreshSources();
+  await rebuildManifest();
   console.log("Boot sync completed.");
 }
 
-// Scheduled sync
 async function scheduledSync() {
   console.log("Running scheduled sync...");
-  for (const source of SOURCES) {
-    try {
-      const needsRefresh = await sourceNeedsUpdate(source.name, source.ttl);
-      if (needsRefresh) await syncSource(source.name);
-    } catch (err) {
-      console.error(
-        `Scheduled sync failed for source ${source.name}:`,
-        err.message,
-      );
-    }
-  }
+  const synced = await refreshSources();
+  if (synced) await rebuildManifest();
 }
 
 module.exports = {

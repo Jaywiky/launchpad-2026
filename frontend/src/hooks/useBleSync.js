@@ -1,26 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as BleManager from '../services/sync/bleManager';
 
-export function useBleSync() {
-    const [isActive, setIsActive] = useState(false)
+export function useBleSync(autoStart = true) {
+    const [isActive, setIsActive] = useState(() => {
+        const saved = localStorage.getItem('p2p_active');
+        return saved !== null ? JSON.parse(saved) : autoStart;
+    });
+
+    const initialized = useRef(false);
 
     useEffect(() => {
-        BleManager.initializeBleHardware()
+        if (initialized.current) return;
+        initialized.current = true;
 
-        return () => {
-            BleManager.stopP2PNetwork()
-        }
-    }, [])
+        const init = async () => {
+            await BleManager.initializeBleHardware();
+            if (isActive) {
+                BleManager.startP2PNetwork();
+            }
+        };
+        init();
+        
+    }, []); 
 
     const toggleSync = () => {
-        if (isActive) {
-            BleManager.stopP2PNetwork()
-            setIsActive(false)
-        } else {
-            BleManager.startP2PNetwork()
-            setIsActive(true)
-        }
-    }
+        const newState = !isActive;
+        setIsActive(newState);
+        localStorage.setItem('p2p_active', JSON.stringify(newState));
 
-    return { isActive, toggleSync }
+        if (newState) {
+            BleManager.startP2PNetwork();
+        } else {
+            BleManager.stopP2PNetwork();
+        }
+    };
+
+    return { isActive, toggleSync };
 }

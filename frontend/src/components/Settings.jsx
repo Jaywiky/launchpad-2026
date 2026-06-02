@@ -1,4 +1,5 @@
-export default function Settings({ onClose }) {
+
+export default function Settings({ onClose, isActive, toggleSync }) {
   return (
     <div className="h-screen w-full bg-[#111111] text-white p-6 overflow-y-auto">
       <div className="flex items-center mb-8">
@@ -11,7 +12,6 @@ export default function Settings({ onClose }) {
         <h1 className="text-2xl font-bold">Settings</h1>
       </div>
 
-      {/* Settings Content */}
       <div className="space-y-6">
         <div className="bg-[#222222] p-4 rounded-xl border border-[#333333]">
           <h2 className="text-lg font-semibold mb-2">Language Preferences</h2>
@@ -26,8 +26,16 @@ export default function Settings({ onClose }) {
         <div className="bg-[#222222] p-4 rounded-xl border border-[#333333]">
           <h2 className="text-lg font-semibold mb-2">Toggle P2P</h2>
           <p className="text-sm text-gray-400">Toggle the ability to download data from Bluetooth.</p>
-          <button className="mt-4 bg-red-900/30 text-red-400 border border-red-900/50 px-4 py-2 rounded-lg text-sm font-medium">
-            Toggle P2P
+          
+          <button 
+            onClick={toggleSync}
+            className={`mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isActive 
+                ? 'bg-green-900/30 text-green-400 border border-green-900/50'
+                : 'bg-red-900/30 text-red-400 border border-red-900/50'
+            }`}
+          >
+            {isActive ? 'P2P Network: ON' : 'P2P Network: OFF'}
           </button>
         </div>
       </div>

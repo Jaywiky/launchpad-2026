@@ -39,7 +39,7 @@ export async function emptyStorage() {
 }
 
 export async function writeJsonFile(path, jsonData) {
-    const data = await JSON.stringify(jsonData)
+    const data = await JSON.stringify(jsonData, null, 2)
     try {
         await Filesystem.writeFile({
             path,

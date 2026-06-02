@@ -5,10 +5,12 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
@@ -22,6 +24,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -57,6 +60,8 @@ public class LadywoodGatt extends Plugin {
     private static final UUID SERVICE_UUID = UUID.fromString("f0bffd13-ad4e-4882-8fc7-cdfcabd00e73");
     private static final UUID ENVELOPE_CHAR_UUID = UUID.fromString("9ab41921-747a-42d7-89df-4164a2e64421");
     private static final UUID DATA_CHAR_UUID = UUID.fromString("848cb058-7689-4b50-b207-92c33e6e630d");
+    private static final UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
     private static final int MANUFACTURER_ID = 0xFFFF;
     private static final String ENVELOPE_FILE = "envelope.json";
 
@@ -65,6 +70,7 @@ public class LadywoodGatt extends Plugin {
     private AdvertiseCallback advertiseCallback;
 
     private volatile String currentRequestedHash = "";
+    private int connectedPeers = 0;
 
     private final Object cacheLock = new Object();
     private String cachedKey;
@@ -78,58 +84,114 @@ public class LadywoodGatt extends Plugin {
 
         @Override
         public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-            Log.d(TAG, "Connection state changed: status=" + status + " newState=" + newState);
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                connectedPeers++;
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                connectedPeers--;
+                if (connectedPeers < 0)
+                    connectedPeers = 0;
+            }
+            Log.d(TAG, "Connection state changed. Connected peers: " + connectedPeers);
+        }
+
+        @Override
+        public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor,
+                boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            if (!hasConnectPermission())
+                return;
+            if (CCCD_UUID.equals(descriptor.getUuid())) {
+                respond(device, requestId, responseNeeded, BluetoothGatt.GATT_SUCCESS, offset, value);
+            }
         }
 
         @Override
         public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId,
-                                                 BluetoothGattCharacteristic characteristic,
-                                                 boolean preparedWrite, boolean responseNeeded,
-                                                 int offset, byte[] value) {
+                BluetoothGattCharacteristic characteristic,
+                boolean preparedWrite, boolean responseNeeded,
+                int offset, byte[] value) {
             if (!hasConnectPermission()) {
                 respond(device, requestId, responseNeeded, BluetoothGatt.GATT_FAILURE, offset, null);
                 return;
             }
 
             if (DATA_CHAR_UUID.equals(characteristic.getUuid())) {
-                String hash = value == null ? "" : new String(value, StandardCharsets.UTF_8);
-                if (!isKnownHash(hash)) {
-                    Log.w(TAG, "Rejected write for unknown hash");
-                    respond(device, requestId, responseNeeded, BluetoothGatt.GATT_FAILURE, offset, null);
-                    return;
+                String payload = value == null ? "" : new String(value, StandardCharsets.UTF_8);
+                try {
+                    if (payload.startsWith("DAT|") || payload.startsWith("ENV|")) {
+                        String hash = payload.startsWith("DAT|") ? payload.split("\\|")[1] : "";
+                        currentRequestedHash = hash;
+                        respond(device, requestId, responseNeeded, BluetoothGatt.GATT_SUCCESS, offset, value);
+
+                        new Thread(() -> {
+                            UUID targetFile = payload.startsWith("ENV|") ? ENVELOPE_CHAR_UUID : DATA_CHAR_UUID;
+                            byte[] fileBytes = loadForRead(targetFile);
+
+                            if (fileBytes != null) {
+                                int chunkOffset = 0;
+                                while (chunkOffset < fileBytes.length) {
+                                    int length = Math.min(fileBytes.length - chunkOffset, 500);
+                                    byte[] chunk = new byte[length];
+                                    System.arraycopy(fileBytes, chunkOffset, chunk, 0, length);
+
+                                    characteristic.setValue(chunk);
+                                    boolean success = gattServer.notifyCharacteristicChanged(device, characteristic,
+                                            false);
+
+                                    if (!success) {
+                                        try {
+                                            Thread.sleep(30);
+                                        } catch (Exception e) {
+                                        }
+                                        gattServer.notifyCharacteristicChanged(device, characteristic, false);
+                                    }
+
+                                    chunkOffset += length;
+                                    try {
+                                        Thread.sleep(15);
+                                    } catch (Exception e) {
+                                    }
+                                }
+                            }
+
+                            characteristic.setValue("EOF".getBytes(StandardCharsets.UTF_8));
+                            gattServer.notifyCharacteristicChanged(device, characteristic, false);
+
+                        }).start();
+                        return;
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to parse stream request", e);
                 }
-                currentRequestedHash = hash;
-                respond(device, requestId, responseNeeded, BluetoothGatt.GATT_SUCCESS, offset, value);
-            } else {
-                respond(device, requestId, responseNeeded, BluetoothGatt.GATT_FAILURE, offset, null);
             }
+            respond(device, requestId, responseNeeded, BluetoothGatt.GATT_FAILURE, offset, null);
         }
 
         @Override
         public void onCharacteristicReadRequest(BluetoothDevice device, int requestId,
-                                                int offset, BluetoothGattCharacteristic characteristic) {
+                int offset, BluetoothGattCharacteristic characteristic) {
             if (!hasConnectPermission()) {
                 sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null);
                 return;
             }
 
             byte[] fileBytes = loadForRead(characteristic.getUuid());
-            if (fileBytes == null) {
-                Log.w(TAG, "No data available for characteristic " + characteristic.getUuid());
-                sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, new byte[0]);
+            if (fileBytes == null || offset >= fileBytes.length) {
+                sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, new byte[0]);
                 return;
             }
 
-            if (offset < 0 || offset > fileBytes.length) {
-                sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null);
-                return;
-            }
-
-            byte[] chunk = new byte[fileBytes.length - offset];
-            System.arraycopy(fileBytes, offset, chunk, 0, chunk.length);
-            sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, chunk);
+            byte[] osChunk = new byte[fileBytes.length - offset];
+            System.arraycopy(fileBytes, offset, osChunk, 0, osChunk.length);
+            sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, osChunk);
         }
     };
+
+    @PluginMethod
+    public void isServerBusy(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("busy", connectedPeers > 0);
+        call.resolve(ret);
+    }
 
     @Nullable
     private byte[] loadForRead(UUID characteristicUuid) {
@@ -138,10 +200,6 @@ public class LadywoodGatt extends Plugin {
 
         if (DATA_CHAR_UUID.equals(characteristicUuid)) {
             String hash = currentRequestedHash;
-            if (!isKnownHash(hash)) {
-                Log.w(TAG, "No valid hash selected for data read");
-                return null;
-            }
             key = "data:" + hash;
             file = new File(getContext().getFilesDir(), "json_data/" + hash + ".json");
         } else if (ENVELOPE_CHAR_UUID.equals(characteristicUuid)) {
@@ -235,10 +293,7 @@ public class LadywoodGatt extends Plugin {
     }
 
     private static void addIfSafe(Set<String> hashes, String value) {
-        if (value != null
-                && !value.isEmpty()
-                && !value.contains("/")
-                && !value.contains("\\")
+        if (value != null && !value.isEmpty() && !value.contains("/") && !value.contains("\\")
                 && !value.contains("..")) {
             hashes.add(value);
         }
@@ -312,6 +367,7 @@ public class LadywoodGatt extends Plugin {
             advertiseCallback = null;
             advertiser = null;
             gattServer = null;
+            connectedPeers = 0;
             synchronized (cacheLock) {
                 cachedKey = null;
                 cachedBytes = null;
@@ -333,12 +389,25 @@ public class LadywoodGatt extends Plugin {
                 BluetoothGattCharacteristic.PROPERTY_READ,
                 BluetoothGattCharacteristic.PERMISSION_READ));
 
-        service.addCharacteristic(new BluetoothGattCharacteristic(
-                DATA_CHAR_UUID,
-                BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE,
-                BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE));
+        BluetoothGattCharacteristic dataChar = getBluetoothGattCharacteristic();
 
+        service.addCharacteristic(dataChar);
         return service;
+    }
+
+    @NonNull
+    private static BluetoothGattCharacteristic getBluetoothGattCharacteristic() {
+        BluetoothGattCharacteristic dataChar = new BluetoothGattCharacteristic(
+                DATA_CHAR_UUID,
+                BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE
+                        | BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE);
+
+        BluetoothGattDescriptor cccd = new BluetoothGattDescriptor(
+                CCCD_UUID,
+                BluetoothGattDescriptor.PERMISSION_READ | BluetoothGattDescriptor.PERMISSION_WRITE);
+        dataChar.addDescriptor(cccd);
+        return dataChar;
     }
 
     private boolean hasConnectPermission() {
@@ -347,9 +416,8 @@ public class LadywoodGatt extends Plugin {
     }
 
     private void sendResponse(BluetoothDevice device, int requestId, int status, int offset, byte[] value) {
-        if (gattServer == null || !hasConnectPermission()) {
+        if (gattServer == null || !hasConnectPermission())
             return;
-        }
         try {
             gattServer.sendResponse(device, requestId, status, offset, value);
         } catch (SecurityException e) {
@@ -357,8 +425,8 @@ public class LadywoodGatt extends Plugin {
         }
     }
 
-    private void respond(BluetoothDevice device, int requestId, boolean responseNeeded,
-                         int status, int offset, byte[] value) {
+    private void respond(BluetoothDevice device, int requestId, boolean responseNeeded, int status, int offset,
+            byte[] value) {
         if (responseNeeded) {
             sendResponse(device, requestId, status, offset, value);
         }

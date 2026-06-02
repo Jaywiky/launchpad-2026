@@ -8,6 +8,9 @@ export const BLE_CONFIG = Object.freeze({
 export const TIMING = Object.freeze({
     SCAN_WINDOW_MS: 5500,
     CYCLE_INTERVAL_MS: 20000,
+    GATT_RETRY_ATTEMPTS: 3,
+    GATT_RETRY_DELAY_MS: 300,
+    POST_CONNECT_SETTLE_MS: 250
 })
 
 export const MAX_CHARACTERISTIC_BYTES = 512

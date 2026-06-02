@@ -50,9 +50,17 @@ async function runCycle() {
     if (!isRunning || cycleInFlight) return
 
     if (Receiver.getIsConnecting()) {
-        console.log('[BLE] Download in progress skipping this cycle.')
+        console.log('[BLE] Download in progress, skipping this cycle.')
         return
     }
+
+    try {
+        const serverStatus = await LadywoodGatt.isServerBusy()
+        if (serverStatus.busy) {
+            console.log("[BLE] Actively hosting files for a peer! Pausing cycle to prevent hang-up.")
+            return 
+        }
+    } catch (e) { console.warn("[BLE] Could not check server status", e) }
 
     cycleInFlight = true
     try {

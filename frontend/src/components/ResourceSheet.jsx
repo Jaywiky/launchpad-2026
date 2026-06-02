@@ -8,7 +8,7 @@ const specificCategories = ['food_bank', 'toilet', 'recycling', 'library', 'gree
 
 async function deleteData() {
     await emptyStorage();
-    window.dispatchEvent(new Event('meshSyncUpdated'));
+    window.dispatchEvent(new Event('resourceUpdated'));
 }
 
 async function seedFakeData() {
@@ -54,7 +54,7 @@ async function seedFakeData() {
         }
 
         alert('Fake data seeded. You are now on version 200');
-        window.dispatchEvent(new Event('meshSyncUpdated'));
+        window.dispatchEvent(new Event('resourceUpdated'));
     } catch (error) {
         console.error('[ResourceSheet] Failed to seed data:', error);
         alert('Error seeding data.');
@@ -70,6 +70,7 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
 
     const minY = -(window.innerHeight * 0.55);
     const maxY = 0;
+
 
     const filteredResources = resources.filter((resource) => {
         if (!resource) return false;
