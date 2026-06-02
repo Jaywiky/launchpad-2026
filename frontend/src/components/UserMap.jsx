@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { Geolocation } from '@capacitor/geolocation'
+import { useTranslation } from 'react-i18next'
 
 const getMarkerColor = (type) => {
   switch (type) {
-    case 'food_bank': return '#2E7D32';   // Deep Green
-    case 'toilet': return '#1565C0';      // Soft Blue
-    case 'library': return '#EF6C00';     // Warm Orange
-    case 'recycling': return '#00838F';   // Teal
-    case 'green_space': return '#558B2F'; // Light Olive Green
-    default: return '#757575';            // Slate Grey
+    case 'food_bank': return '#2E7D32';   
+    case 'toilet': return '#1565C0';      
+    case 'library': return '#EF6C00';     
+    case 'recycling': return '#00838F';   
+    case 'green_space': return '#558B2F'; 
+    default: return '#757575';            
   }
 }
 
@@ -27,7 +28,15 @@ function RecenterOnce({ pos }) {
   return null
 }
 
-
+function FlyToSelectedResource({ pos }) {
+  const map = useMap()
+  useEffect(() => {
+    if (pos) {
+      map.flyTo(pos, 16, { duration: 0.8 })
+    }
+  }, [pos, map])
+  return null
+}
 
 function LocateButton({ pos, loading, onLocate }) {
   const map = useMap()
@@ -66,15 +75,14 @@ function LocateButton({ pos, loading, onLocate }) {
   )
 }
 
-export default function UserMap({ resources = [], activeCategory = ['All'] }) {
+export default function UserMap({ resources = [], activeCategory = ['All'], onLocationUpdate, selectedPos }) {
+  const { t } = useTranslation()
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [isRealPos, setIsRealPos] = useState(false)
 
   const fetchLocation = async () => {
     setLoading(true)
-    setError(null)
 
     try {
       await Geolocation.requestPermissions()
@@ -84,21 +92,25 @@ export default function UserMap({ resources = [], activeCategory = ['All'] }) {
           enableHighAccuracy: false,
           timeout: 15000,
         })
-        setUserPos([pos.coords.latitude, pos.coords.longitude])
+        const coords = [pos.coords.latitude, pos.coords.longitude];
+        setUserPos(coords)
         setIsRealPos(true)
+        if (onLocationUpdate) onLocationUpdate(coords)
       } catch {
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 30000,
         })
-        setUserPos([pos.coords.latitude, pos.coords.longitude])
+        const coords = [pos.coords.latitude, pos.coords.longitude];
+        setUserPos(coords)
         setIsRealPos(true)
+        if (onLocationUpdate) onLocationUpdate(coords)
       }
     } catch (err) {
-      console.error('Location error:', err)
-      setError('Could not get location')
-      setUserPos([52.483, -1.913])
+      const fallbackCoords = [52.483, -1.913];
+      setUserPos(fallbackCoords)
       setIsRealPos(false)
+      if (onLocationUpdate) onLocationUpdate(fallbackCoords)
     } finally {
       setLoading(false)
     }
@@ -122,12 +134,6 @@ export default function UserMap({ resources = [], activeCategory = ['All'] }) {
           margin-right: 18px !important; 
         }
       `}</style>
-      {error && (
-        <div className="absolute top-2 left-2 right-2 z-[1000] bg-red-100 text-red-700 text-sm px-3 py-2 rounded-lg">
-          {error}
-          <button onClick={fetchLocation} className="ml-2 underline">Retry</button>
-        </div>
-      )}
 
       <MapContainer
         center={[52.481346, -1.918235]}
@@ -143,6 +149,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'] }) {
         />
 
         <RecenterOnce pos={userPos} />
+        <FlyToSelectedResource pos={selectedPos} />
 
         {visibleMarkers.map((item) => {
           if (!item || !item.lat || !item.lng) return null;
@@ -163,7 +170,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'] }) {
                 <div className="text-black font-sans min-w-[160px]">
                   <h3 className="font-bold text-sm leading-tight mb-0.5">{item.name}</h3>
                   <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
-                    {item.type.replace('_', ' ')}
+                    {t(item.type.toLowerCase())}
                   </span>
 
                   {item.address && (
@@ -205,9 +212,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'] }) {
                 color: '#ffffff',
                 weight: 3,
               }}
-            >
-              <Popup>{isRealPos ? 'You are here' : 'Approximate location'}</Popup>
-            </CircleMarker>
+            />
           </>
         )}
 
