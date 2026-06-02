@@ -36,8 +36,8 @@ function cancelDelay() {
 
 export async function initializeBleHardware() {
     try {
-        await BleClient.initialize()
         await LadywoodGatt.requestPermissions()
+        await BleClient.initialize({ androidNeverForLocation: true })
         console.log('[BLE] Bluetooth initialized.')
         return true
     } catch (e) {
@@ -57,10 +57,10 @@ async function runCycle() {
     try {
         const serverStatus = await LadywoodGatt.isServerBusy()
         if (serverStatus.busy) {
-            console.log("[BLE] Actively hosting files for a peer! Pausing cycle to prevent hang-up.")
-            return 
+            console.log('[BLE] Actively hosting files for a peer; pausing cycle to avoid a mid-transfer teardown.')
+            return
         }
-    } catch (e) { console.warn("[BLE] Could not check server status", e) }
+    } catch (e) { console.warn('[BLE] Could not check server status', e) }
 
     cycleInFlight = true
     try {

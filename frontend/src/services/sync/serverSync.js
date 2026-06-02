@@ -18,6 +18,6 @@ export async function runServerSync() {
         source: 'ServerSync',
         remoteEnvelope: manifest,
         localEnvelope: local,
-        fetchBlob: async (hash) => request(`/api/blob/${hash}`).then((r) => r.text()),
+        fetchBlob: (hash) => request(`/api/blob/${hash}`).then((r) => r.text()),
     })
 }

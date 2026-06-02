@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
-import { useBleSync } from './useBleSync';
+import { useBleSync } from '../hooks/useBleSync';
 
 export default function Settings({ onClose }) {
   const { t } = useTranslation();

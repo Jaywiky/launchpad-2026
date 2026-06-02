@@ -7,25 +7,50 @@ import ResourceSheet from './components/ResourceSheet'
 import Settings from './components/Settings'
 import { initializeStorage, readJsonFile } from './services/storage/fileSystem'
 import { startSyncManager, stopSyncManager } from './services/sync/syncManager'
-import { collectHashes, loadLocalEnvelope } from './services/sync/syncEngine'
+import { loadLocalEnvelope } from './services/sync/syncEngine'
 import { useBleSync } from './hooks/useBleSync'
 
 function App() {
-  const pollingRef = useRef(null);
+  const { t } = useI18nTranslation();
   const [ready, setReady] = useState(false);
   const [activePage, setActivePage] = useState('home');
   const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(['All']);
+  const [userPos, setUserPos] = useState(null);
+  const [selectedPos, setSelectedPos] = useState(null);
+
+  const activePageRef = useRef(activePage);
+  useEffect(() => { activePageRef.current = activePage }, [activePage]);
+
+  const { isActive, toggleSync } = useBleSync(true)
+
+  const updateResources = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const env = await loadLocalEnvelope()
+      const dataHashes = (env.datasets ?? []).map((d) => d?.data).filter(Boolean)
+      const results = await Promise.all(
+        dataHashes.map((hash) =>
+          readJsonFile(`json_data/${hash}.json`).catch((e) => {
+            console.warn(`[App] Missing resource blob ${hash}:`, e)
+            return []
+          }),
+        ),
+      )
+      setResources(results.flat())
+    } catch (error) { console.error('[App] Failed to update local resources:', error) }
+    finally { setIsLoading(false) }
+  }, [])
 
   useEffect(() => {
     const boot = async () => {
       try {
-        console.log("[App] Initalising storage")
+        console.log('[App] Initialising storage')
         await initializeStorage()
-        console.log("[App] Starting Sync Manager")
+        console.log('[App] Starting sync manager')
         await startSyncManager()
-        console.log("[App] Loading inital resources")
+        console.log('[App] Loading initial resources')
         await updateResources()
       } catch (error) { console.error('[App] Critical error during boot:', error) }
       finally { setReady(true) }
@@ -81,10 +106,10 @@ function App() {
       </button>
 
       <div className="absolute inset-0 z-0">
-        <UserMap 
-          resources={resources} 
-          activeCategory={activeCategory} 
-          onLocationUpdate={setUserPos} 
+        <UserMap
+          resources={resources}
+          activeCategory={activeCategory}
+          onLocationUpdate={setUserPos}
           selectedPos={selectedPos}
         />
       </div>

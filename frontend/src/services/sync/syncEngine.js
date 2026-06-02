@@ -25,7 +25,7 @@ export function collectHashes(envelope) {
 export async function loadLocalEnvelope() {
     try { return (await readJsonFile('envelope.json')) || { version: 0, datasets: [] } }
     catch (e) {
-        console.warn('[Sync] Could not read envelope.json treating as version 0.', e)
+        console.warn('[Sync] Could not read envelope.json; treating as version 0.', e)
         return { version: 0, datasets: [] }
     }
 }
@@ -34,47 +34,36 @@ export async function applyEnvelopeUpdate({ source, remoteEnvelope, localEnvelop
     if (!remoteEnvelope || !Array.isArray(remoteEnvelope.datasets))
         throw new Error('Remote envelope is missing a datasets array')
 
-    console.log(`[INFO] Remote env ${JSON.stringify(remoteEnvelope, null, 2)}`)
-
     if (!(await verifyManifest(remoteEnvelope)))
         throw new Error(`[${source}] envelope signature failed verification`)
 
-    console.log("[PASS] Remote host passed sig check")
-
     const remoteVersion = remoteEnvelope.version ?? 0
     const localVersion = localEnvelope?.version ?? 0
-
     if (remoteVersion <= localVersion) {
-        console.log(`[${source}] Already at version ${localVersion} nothing to do.`)
+        console.log(`[${source}] Already at version ${localVersion}; nothing to do.`)
         return null
     }
 
     const localHashes = collectHashes(localEnvelope)
     const remoteHashes = collectHashes(remoteEnvelope)
-
     const toDownload = [...remoteHashes].filter((h) => !localHashes.has(h))
 
     await writeJsonFile('tmp/envelope.json', remoteEnvelope)
 
     for (const hash of toDownload) {
         console.log(`[${source}] Fetching ${hash}.`)
-        // console.log(`[NOTE] Prepering to download ${hash}`)
         const body = await fetchBlob(hash)
         const digest = await sha256Hex(body)
         if (digest !== hash)
             throw new Error(`[${source}] blob ${hash} failed integrity check (got ${digest})`)
-        console.log(`[PASS] Remote file of hash ${hash} passed sig check`)
 
-        const jsonData = JSON.parse(body)
-
-        await writeJsonFile(`tmp/${hash}.json`, jsonData)
+        await writeJsonFile(`tmp/${hash}.json`, JSON.parse(body))
     }
 
-    for (const hash of toDownload) { await commitFile(`tmp/${hash}.json`, `json_data/${hash}.json`) }
+    for (const hash of toDownload) await commitFile(`tmp/${hash}.json`, `json_data/${hash}.json`)
     await commitFile('tmp/envelope.json', 'envelope.json')
 
     const stale = [...localHashes].filter((h) => !remoteHashes.has(h))
-
     for (const hash of stale) {
         try { await deleteFile(`json_data/${hash}.json`) }
         catch (e) { console.warn(`[${source}] Could not delete stale ${hash}:`, e) }
