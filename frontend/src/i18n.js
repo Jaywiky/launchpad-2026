@@ -23,7 +23,11 @@ const resources = {
       "green_space": "Green Spaces",
       "loading_local_data": "Loading local data...",
       "no_resources_found": "No resources found.",
-      "waiting_to_sync": "Waiting to sync with nearby peers over Bluetooth..."
+      "waiting_to_sync": "Waiting to sync with nearby peers over Bluetooth...",
+      "bg_p2p": "Background Access",
+      "bg_p2p_desc": "Allow the network to continue running when the app is minimized.",
+      "allow_bg": "Allowed",
+      "deny_bg": "Denied",
     }
   },
   pl: {
@@ -45,7 +49,11 @@ const resources = {
       "green_space": "Zielone przestrzenie",
       "loading_local_data": "Ładowanie danych lokalnych...",
       "no_resources_found": "Nie znaleziono zasobów.",
-      "waiting_to_sync": "Oczekiwanie na synchronizację z pobliskimi urządzeniami..."
+      "waiting_to_sync": "Oczekiwanie na synchronizację z pobliskimi urządzeniami...",
+      "bg_p2p": "Dostęp w tle",
+      "bg_p2p_desc": "Zezwól sieci na dalsze działanie po zminimalizowaniu aplikacji.",
+      "allow_bg": "Dozwolone",
+      "deny_bg": "Zabronione",
     }
   },
   ur: {
@@ -67,7 +75,11 @@ const resources = {
       "green_space": "سبزہ زار",
       "loading_local_data": "لوکل ڈیٹا لوڈ ہو رہا ہے...",
       "no_resources_found": "کوئی وسائل نہیں ملے۔",
-      "waiting_to_sync": "بلوٹوتھ کے ذریعے قریبی آلات کے ساتھ مطابقت پذیری کا انتظار ہے..."
+      "waiting_to_sync": "بلوٹوتھ کے ذریعے قریبی آلات کے ساتھ مطابقت پذیری کا انتظار ہے...",
+      "bg_p2p": "بیک گراؤنڈ رسائی",
+      "bg_p2p_desc": "ایپ کو منیمائز کرنے پر بھی نیٹ ورک کو چلتے رہنے کی اجازت دیں۔",
+      "allow_bg": "اجازت ہے",
+      "deny_bg": "ممنوع ہے",
     }
   }
 };
@@ -79,7 +91,7 @@ i18n
     lng: savedLanguage,
     fallbackLng: 'en',
     interpolation: {
-      escapeValue: false 
+      escapeValue: false
     }
   });
 

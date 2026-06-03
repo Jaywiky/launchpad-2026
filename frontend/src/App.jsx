@@ -82,9 +82,20 @@ function App() {
     boot()
 
     const listenerHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) startSyncManager()
-      else stopSyncManager()
-    })
+      if (isActive) {
+        console.log('[App] App foregrounded. Starting sync manager.');
+        startSyncManager();
+      } else {
+        const isBackgroundAllowed = localStorage.getItem('allow-background-p2p') === 'true';
+        
+        if (isBackgroundAllowed) {
+          console.log('[App] App backgrounded. Access allowed: keeping sync manager running.');
+        } else {
+          console.log('[App] App backgrounded. Access denied: stopping sync manager to save power.');
+          stopSyncManager();
+        }
+      }
+    });
 
     window.addEventListener('resourceUpdated', updateResources)
 
