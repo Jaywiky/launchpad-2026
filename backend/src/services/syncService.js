@@ -10,55 +10,78 @@ const SOURCES = [
   { name: "overpass", ttl: 24 * 60 * 60 * 1000 },
 ];
 
-
-const delay = ms => new Promise(res => setTimeout(res, ms));
-
+const LIBRETRANSLATE_URL = process.env.LIBRETRANSLATE_URL || "http://localhost:5000"
+const LIBRETRANSLATE_API_KEY = process.env.LIBRETRANSLATE_API_KEY || ""
+const TARGET_LANGS = ["pl", "ur"]
+ 
+async function translateBatch(texts, targetLang) {
+  if (texts.length === 0) return []
+ 
+  const body = { q: texts, source: "en", target: targetLang, format: "text" }
+  if (LIBRETRANSLATE_API_KEY) body.api_key = LIBRETRANSLATE_API_KEY
+ 
+  const res = await fetch(`${LIBRETRANSLATE_URL}/translate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`LibreTranslate ${targetLang} responded ${res.status}`)
+ 
+  const data = await res.json()
+  return Array.isArray(data.translatedText) ? data.translatedText : [data.translatedText]
+}
+ 
 async function upsertTranslations(client, store) {
   const hashes = Object.keys(store)
   if (hashes.length === 0) return
-
+ 
+  const haveAll = TARGET_LANGS.map((l) => `translations ? '${l}'`).join(" AND ")
   const { rows } = await client.query(
-    `SELECT hash FROM launchpad.data_translations WHERE hash = ANY($1::text[])`,
+    `SELECT hash FROM launchpad.data_translations
+     WHERE hash = ANY($1::text[]) AND ${haveAll}`,
     [hashes]
   )
-  const existingHashes = new Set(rows.map(r => r.hash))
-
-  console.log(`Extractor: Upserting ${hashes.length} strings (${hashes.length - existingHashes.size} are new and need translation).`)
-
-  for (const hash of hashes) {
-    const enText = store[hash].en
-    const typesArray = Array.from(store[hash].types)
-    let translationsJson;
-
-    if (!existingHashes.has(hash)) {
-      let plText = enText
-      let urText = enText
-
-      try {
-        console.log(`Translating new string: "${enText.substring(0, 30)}..."`)
-
-        plText = (await translate(enText, { to: 'pl' })).text
-        await delay(500)
-        urText = (await translate(enText, { to: 'ur' })).text
-        await delay(500);
-
-      } catch (err) { console.error(`Translation failed for hash ${hash}:`, err.message) }
-
-      translationsJson = { en: enText, pl: plText, ur: urText }
+  const completeHashes = new Set(rows.map((r) => r.hash))
+  const newHashes = hashes.filter((h) => !completeHashes.has(h))
+ 
+  console.log(`Translations: ${hashes.length} strings, ${newHashes.length} need translating.`)
+  const translated = {}
+  for (const h of newHashes) translated[h] = { en: store[h].en }
+ 
+  if (newHashes.length > 0) {
+    const newTexts = newHashes.map((h) => store[h].en)
+ 
+    const results = await Promise.allSettled(
+      TARGET_LANGS.map(async (lang) => ({ lang, out: await translateBatch(newTexts, lang) }))
+    )
+ 
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        newHashes.forEach((h, i) => {
+          if (r.value.out[i]) translated[h][r.value.lang] = r.value.out[i]
+        })
+      } else {
+        console.error("Translation batch failed:", r.reason?.message || r.reason)
+      }
     }
-    else { translationsJson = { en: enText } }
-
+  }
+ 
+  for (const hash of hashes) {
+    const typesArray = Array.from(store[hash].types)
+    const translationsJson = translated[hash] ?? { en: store[hash].en }
+ 
     await client.query(
       `INSERT INTO launchpad.data_translations (hash, translations, used_in_types)
        VALUES ($1, $2::jsonb, $3::text[])
-       ON CONFLICT (hash) DO UPDATE SET 
+       ON CONFLICT (hash) DO UPDATE SET
          used_in_types = ARRAY(
            SELECT DISTINCT UNNEST(launchpad.data_translations.used_in_types || EXCLUDED.used_in_types)
          )`,
       [hash, JSON.stringify(translationsJson), typesArray]
-    );
+    )
   }
 }
+
 
 async function insertResource(client, resource) {
   const {
