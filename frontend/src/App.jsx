@@ -17,7 +17,8 @@ function App() {
   const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(['All']);
-  const [userPos, setUserPos] = useState(null);
+  
+  const [userPos, setUserPos] = useState([52.483, -1.913]);
   const [selectedPos, setSelectedPos] = useState(null);
 
   const activePageRef = useRef(activePage);
@@ -39,23 +40,12 @@ function App() {
         ),
       )
       setResources(results.flat())
-    } catch (error) { console.error('[App] Failed to update local resources:', error) }
-    finally { setIsLoading(false) }
-  }, [])
-
-  const loadInitialPosition = useCallback(async () => {
-    try {
-      const pos = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: false,
-        timeout: 8000,
-        maximumAge: 60000,
-      })
-      setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-    } catch (e) {
-      console.warn('[App] Initial location unavailable; rendering without it.', e?.message || e)
+    } catch (error) { 
+      console.error('[App] Failed to update local resources:', error) 
+    } finally { 
+      setIsLoading(false) 
     }
   }, [])
-
 
   useEffect(() => {
     const boot = async () => {
@@ -65,12 +55,12 @@ function App() {
         console.log('[App] Starting sync manager')
         await startSyncManager()
         console.log('[App] Loading initial resources')
-
-        console.log('[App] Loading initial resources and location')
-        await Promise.all([updateResources(), loadInitialPosition()])
-
-      } catch (error) { console.error('[App] Critical error during boot:', error) }
-      finally { setReady(true) }
+        await updateResources()
+      } catch (error) { 
+        console.error('[App] Critical error during boot:', error) 
+      } finally { 
+        setReady(true) 
+      }
     }
 
     boot()
@@ -81,6 +71,7 @@ function App() {
     })
 
     window.addEventListener('resourceUpdated', updateResources)
+    window.addEventListener('meshSyncUpdated', updateResources)
 
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
       if (activePageRef.current === 'settings') setActivePage('home')
@@ -90,6 +81,7 @@ function App() {
     return () => {
       stopSyncManager()
       window.removeEventListener('resourceUpdated', updateResources)
+      window.removeEventListener('meshSyncUpdated', updateResources)
       listenerHandle.then(l => l.remove())
       backButtonListener.then(l => l.remove())
     }
@@ -129,11 +121,17 @@ function App() {
           onLocationUpdate={setUserPos}
           userPos={userPos}
           selectedPos={selectedPos}
-
         />
       </div>
 
-      <ResourceSheet resources={resources} isLoading={isLoading} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+      <ResourceSheet 
+        resources={resources} 
+        isLoading={isLoading} 
+        activeCategory={activeCategory} 
+        setActiveCategory={setActiveCategory} 
+        userPos={userPos}
+        onCardClick={setSelectedPos}
+      />
     </div>
   )
 }
