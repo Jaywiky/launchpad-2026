@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { Geolocation } from '@capacitor/geolocation'
+import { App as CapacitorApp } from '@capacitor/app'
 import { useTranslation } from 'react-i18next'
 
 const getMarkerColor = (type) => {
@@ -118,6 +119,17 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
 
   useEffect(() => {
     fetchLocation()
+
+    const listenerHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        console.log('[UserMap] App returned to foreground, refreshing location data')
+        fetchLocation()
+      }
+    })
+
+    return () => {
+      listenerHandle.then(l => l.remove())
+    }
   }, [])
 
   const visibleMarkers = resources.filter((item) => {
