@@ -64,7 +64,6 @@ public class LadywoodGatt extends Plugin {
     private static final String TAG = "LadywoodGatt";
 
     private static final UUID SERVICE_UUID = UUID.fromString("f0bffd13-ad4e-4882-8fc7-cdfcabd00e73");
-    private static final UUID ENVELOPE_CHAR_UUID = UUID.fromString("9ab41921-747a-42d7-89df-4164a2e64421");
     private static final UUID DATA_CHAR_UUID = UUID.fromString("848cb058-7689-4b50-b207-92c33e6e630d");
     private static final UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
@@ -154,12 +153,9 @@ public class LadywoodGatt extends Plugin {
 
                         respond(device, requestId, responseNeeded, BluetoothGatt.GATT_SUCCESS, offset, value);
 
-                        final UUID targetFile = isEnvelope ? ENVELOPE_CHAR_UUID : DATA_CHAR_UUID;
-                        final BluetoothDevice peer = device;
-                        final BluetoothGattCharacteristic ch = characteristic;
                         activeStreams.incrementAndGet();
                         lastStreamMs = SystemClock.elapsedRealtime();
-                        new Thread(() -> streamFile(peer, ch, targetFile, hash)).start();
+                        new Thread(() -> streamFile(device, characteristic, isEnvelope, hash)).start();
                         return;
                     }
                 } catch (Exception e) {
@@ -167,27 +163,6 @@ public class LadywoodGatt extends Plugin {
                 }
             }
             respond(device, requestId, responseNeeded, BluetoothGatt.GATT_FAILURE, offset, null);
-        }
-
-        @Override
-        public void onCharacteristicReadRequest(BluetoothDevice device, int requestId,
-                int offset, BluetoothGattCharacteristic characteristic) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (!hasConnectPermission()) {
-                    sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null);
-                    return;
-                }
-            }
-
-            byte[] fileBytes = loadForRead(characteristic.getUuid(), "");
-            if (fileBytes == null || offset >= fileBytes.length) {
-                sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, new byte[0]);
-                return;
-            }
-
-            byte[] osChunk = new byte[fileBytes.length - offset];
-            System.arraycopy(fileBytes, offset, osChunk, 0, osChunk.length);
-            sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, osChunk);
         }
     };
 
@@ -200,10 +175,10 @@ public class LadywoodGatt extends Plugin {
         call.resolve(ret);
     }
 
-    private void streamFile(BluetoothDevice device, BluetoothGattCharacteristic characteristic, UUID uuid,
+    private void streamFile(BluetoothDevice device, BluetoothGattCharacteristic characteristic, boolean isEnvelope,
             String hash) {
         try {
-            byte[] fileBytes = loadForRead(uuid, hash);
+            byte[] fileBytes = loadForRead(isEnvelope, hash);
             int chunkSize = Math.max(20, Math.min(negotiatedMtu - 3, 512));
             if (fileBytes != null) {
                 int chunkOffset = 0;
@@ -253,18 +228,16 @@ public class LadywoodGatt extends Plugin {
     }
 
     @Nullable
-    private byte[] loadForRead(UUID characteristicUuid, String hash) {
+    private byte[] loadForRead(boolean isEnvelope, String hash) {
         final String key;
         final File file;
 
-        if (DATA_CHAR_UUID.equals(characteristicUuid)) {
-            key = "data:" + hash;
-            file = new File(getContext().getFilesDir(), "json_data/" + hash + ".json");
-        } else if (ENVELOPE_CHAR_UUID.equals(characteristicUuid)) {
+        if (isEnvelope) {
             key = "envelope";
             file = new File(getContext().getFilesDir(), ENVELOPE_FILE);
         } else {
-            return null;
+            key = "data:" + hash;
+            file = new File(getContext().getFilesDir(), "json_data/" + hash + ".json");
         }
 
         synchronized (cacheLock) {
@@ -448,11 +421,6 @@ public class LadywoodGatt extends Plugin {
         BluetoothGattService service = new BluetoothGattService(SERVICE_UUID,
                 BluetoothGattService.SERVICE_TYPE_PRIMARY);
 
-        service.addCharacteristic(new BluetoothGattCharacteristic(
-                ENVELOPE_CHAR_UUID,
-                BluetoothGattCharacteristic.PROPERTY_READ,
-                BluetoothGattCharacteristic.PERMISSION_READ));
-
         BluetoothGattCharacteristic dataChar = getBluetoothGattCharacteristic();
 
         service.addCharacteristic(dataChar);
@@ -463,9 +431,8 @@ public class LadywoodGatt extends Plugin {
     private static BluetoothGattCharacteristic getBluetoothGattCharacteristic() {
         BluetoothGattCharacteristic dataChar = new BluetoothGattCharacteristic(
                 DATA_CHAR_UUID,
-                BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE
-                        | BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-                BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE);
+                BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                BluetoothGattCharacteristic.PERMISSION_WRITE);
 
         BluetoothGattDescriptor cccd = new BluetoothGattDescriptor(
                 CCCD_UUID,

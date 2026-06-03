@@ -2,9 +2,8 @@ import * as ed from '@noble/ed25519'
 import { SERVER_CONFIG } from '../sync/serverConfig'
 
 export function canonicalJson(value) {
-    if (Array.isArray(value)) {
+    if (Array.isArray(value))
         return '[' + value.map(canonicalJson).join(',') + ']'
-    }
     if (value && typeof value === 'object') {
         return (
             '{' +
@@ -39,7 +38,5 @@ export async function verifyManifest(manifest) {
         const sig = base64ToBytes(signature)
         const pub = base64ToBytes(SERVER_CONFIG.MANIFEST_PUBLIC_KEY)
         return await ed.verifyAsync(sig, message, pub)
-    } catch {
-        return false
-    }
+    } catch { return false }
 }

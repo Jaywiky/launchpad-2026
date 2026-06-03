@@ -1,6 +1,5 @@
 export const BLE_CONFIG = Object.freeze({
     SERVICE_UUID: 'f0bffd13-ad4e-4882-8fc7-cdfcabd00e73',
-    ENVELOPE_UUID: '9ab41921-747a-42d7-89df-4164a2e64421',
     DATA_UUID: '848cb058-7689-4b50-b207-92c33e6e630d',
     MANUFACTURER_ID: 0xffff,
 })
@@ -10,7 +9,8 @@ export const TIMING = Object.freeze({
     CYCLE_INTERVAL_MS: 20000,
     GATT_RETRY_ATTEMPTS: 3,
     GATT_RETRY_DELAY_MS: 300,
-    POST_CONNECT_SETTLE_MS: 250
+    POST_CONNECT_SETTLE_MS: 250,
+    STREAM_INACTIVITY_MS: 8000
 })
 
 export const MAX_CHARACTERISTIC_BYTES = 512

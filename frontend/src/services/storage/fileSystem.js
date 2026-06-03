@@ -1,7 +1,6 @@
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
-const dirs = ['tmp', 'json_data', 'translations']
-
+const dirs = ['tmp', 'json_data']
 
 export async function initializeStorage() {
     for (const path of dirs) {
@@ -12,9 +11,7 @@ export async function initializeStorage() {
                 recursive: true
             })
             console.warn("Making directory", path)
-        } catch (e) {
-            console.error("Error couldnt initialize directory: ", e)
-        }
+        } catch (e) { console.error("Error couldnt initialize directory: ", e) }
     }
 }
 
@@ -30,9 +27,7 @@ export async function emptyStorage() {
             })
             console.warn("Deleting", path)
     
-        } catch (e) {
-            console.error("Failed to delete directory", e)
-        }
+        } catch (e) { console.error("Failed to delete directory", e) }
     }
     console.warn("Initalising Directories")
     await initializeStorage()
@@ -50,10 +45,7 @@ export async function writeJsonFile(path, jsonData) {
         })
         return true
     }
-    catch (e) {
-        console.error("Unable to write file: ", e)
-        return false
-    }
+    catch (e) { console.error("Unable to write file: ", e); return false }
 }
 
 export async function deleteFile(path) {
@@ -63,10 +55,7 @@ export async function deleteFile(path) {
             directory: Directory.Data,
         })
         return true
-    } catch (e) {
-        console.log("Unable to delete file", e)
-        return false
-    }
+    } catch (e) { console.log("Unable to delete file", e); return false }
 }
 
 export async function readJsonFile(path) {
@@ -77,10 +66,7 @@ export async function readJsonFile(path) {
             encoding: Encoding.UTF8
         })
         return await JSON.parse(contents.data)
-    } catch (e) {
-        console.error("Unable to read file: ", e)
-        return false
-    }
+    } catch (e) { console.error("Unable to read file: ", e); return false }
 }
 
 export async function commitFile(tmpPath, finalPath) {
@@ -91,18 +77,7 @@ export async function commitFile(tmpPath, finalPath) {
             directory: Directory.Data,
             encoding: Encoding.UTF8,
             recursive: true
-        });
-        return true;
-    } catch (error) {
-        console.error(`Failed to commit file from ${tmpPath} to ${finalPath}:`, error);
-        return false;
-    }
-}
-
-export async function purgeOldHashes(oldHashes) {
-    for (const hash in oldHashes) {
-        await Filesystem.deleteFile({
-            path: '/'
         })
-    }
+        return true
+    } catch (error) { console.error(`Failed to commit file from ${tmpPath} to ${finalPath}:`, error); return false }
 }

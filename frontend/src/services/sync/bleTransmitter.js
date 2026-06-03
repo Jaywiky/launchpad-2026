@@ -1,10 +1,10 @@
 import { LadywoodGatt } from './nativeGatt'
 import { readJsonFile } from '../storage/fileSystem'
+import { loadLocalEnvelope } from './syncEngine'
 
 export async function startBroadcasting() {
-  const envelope = await readJsonFile('envelope.json')
-  const version = envelope?.version ?? 0
-  await LadywoodGatt.startBroadcasting({ version })
+  const envelope = await loadLocalEnvelope()
+  await LadywoodGatt.startBroadcasting({ version: envelope.version })
 }
 
 export async function stopBroadcasting() {

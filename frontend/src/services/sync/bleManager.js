@@ -40,26 +40,17 @@ export async function initializeBleHardware() {
         await BleClient.initialize({ androidNeverForLocation: true })
         console.log('[BLE] Bluetooth initialized.')
         return true
-    } catch (e) {
-        console.error('[BLE] Failed to initialize:', e)
-        return false
-    }
+    } catch (e) { console.error('[BLE] Failed to initialize:', e); return false }
 }
 
 async function runCycle() {
     if (!isRunning || cycleInFlight) return
 
-    if (Receiver.getIsConnecting()) {
-        console.log('[BLE] Download in progress, skipping this cycle.')
-        return
-    }
+    if (Receiver.getIsConnecting()) { console.log('[BLE] Download in progress, skipping this cycle.'); return }
 
     try {
         const serverStatus = await LadywoodGatt.isServerBusy()
-        if (serverStatus.busy) {
-            console.log('[BLE] Actively hosting files for a peer; pausing cycle to avoid a mid-transfer teardown.')
-            return
-        }
+        if (serverStatus.busy) { console.log('[BLE] Actively hosting files for a peer! pausing cycle to avoid a mid-transfer teardown.'); return }
     } catch (e) { console.warn('[BLE] Could not check server status', e) }
 
     cycleInFlight = true
@@ -75,11 +66,8 @@ async function runCycle() {
         if (Receiver.getIsConnecting()) return
 
         await Transmitter.startBroadcasting()
-    } catch (e) {
-        console.error('[BLE] Cycle error:', e)
-    } finally {
-        cycleInFlight = false
-    }
+    } catch (e) { console.error('[BLE] Cycle error:', e) }
+    finally { cycleInFlight = false }
 }
 
 export async function startP2PNetwork() {
