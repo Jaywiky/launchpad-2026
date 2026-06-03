@@ -26,7 +26,6 @@ function mapListItem(item) {
     opening_hours: null,
     notes: null,
     source: "givefood",
-    lang: "en",
     extended: {
       needs: [],
       referral_required: null,

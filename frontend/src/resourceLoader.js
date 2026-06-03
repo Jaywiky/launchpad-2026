@@ -13,11 +13,12 @@ function resolveTranslations(value, transFile, lang) {
     if (Array.isArray(value)) return value.map((v) => resolveTranslations(v, transFile, lang))
     if (value && typeof value === 'object') {
         const out = {}
-        for (const [k, v] of Object.valueentries(value)) out[k] = resolveTranslations(v, transFile, lang)
+        for (const [k, v] of Object.entries(value)) { out[k] = resolveTranslations(v, transFile, lang) }
         return out
     }
     return value
 }
+
 
 export async function loadTranslatedResources(lang = DEFAULT_LANG, envelope) {
     const env = envelope ?? (await loadLocalEnvelope())
@@ -34,10 +35,8 @@ export async function loadTranslatedResources(lang = DEFAULT_LANG, envelope) {
             if (!Array.isArray(data)) return []
 
             let transFile = {}
-            if (ds.translations) {
-                try { transFile = (await readJsonFile(`json_data/${ds.translations}.json`)) || {} }
-                catch (e) { console.warn(`[Resources] Missing translation file ${ds.translations}:`, e?.message || e) }
-            }
+            try { transFile = (await readJsonFile(`json_data/${ds.translations}.json`)) || {} }
+            catch (e) { console.warn(`[Resources] Missing translation file ${ds.translations}:`, e?.message || e) }
             return data.map((resource) => resolveTranslations(resource, transFile, lang))
         }),
     )

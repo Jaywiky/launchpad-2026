@@ -2,13 +2,64 @@ const pool = require("../../database/db");
 const givefood = require("../apis/givefood");
 const overpass = require("../apis/overpass");
 const { buildManifest } = require("./manifestService");
+const { extractTranslations } = require("../utils/translationExtractor");
+const { translate } = require('@vitalets/google-translate-api');
 
 const SOURCES = [
   { name: "givefood", ttl: 24 * 60 * 60 * 1000 },
   { name: "overpass", ttl: 24 * 60 * 60 * 1000 },
 ];
 
-// Insert a single resource into DB
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+async function upsertTranslations(client, store) {
+  const hashes = Object.keys(store)
+  if (hashes.length === 0) return
+
+  const { rows } = await client.query(
+    `SELECT hash FROM launchpad.data_translations WHERE hash = ANY($1::text[])`,
+    [hashes]
+  )
+  const existingHashes = new Set(rows.map(r => r.hash))
+
+  console.log(`Extractor: Upserting ${hashes.length} strings (${hashes.length - existingHashes.size} are new and need translation).`)
+
+  for (const hash of hashes) {
+    const enText = store[hash].en
+    const typesArray = Array.from(store[hash].types)
+    let translationsJson;
+
+    if (!existingHashes.has(hash)) {
+      let plText = enText
+      let urText = enText
+
+      try {
+        console.log(`Translating new string: "${enText.substring(0, 30)}..."`)
+
+        plText = (await translate(enText, { to: 'pl' })).text
+        await delay(500)
+        urText = (await translate(enText, { to: 'ur' })).text
+        await delay(500);
+
+      } catch (err) { console.error(`Translation failed for hash ${hash}:`, err.message) }
+
+      translationsJson = { en: enText, pl: plText, ur: urText }
+    }
+    else { translationsJson = { en: enText } }
+
+    await client.query(
+      `INSERT INTO launchpad.data_translations (hash, translations, used_in_types)
+       VALUES ($1, $2::jsonb, $3::text[])
+       ON CONFLICT (hash) DO UPDATE SET 
+         used_in_types = ARRAY(
+           SELECT DISTINCT UNNEST(launchpad.data_translations.used_in_types || EXCLUDED.used_in_types)
+         )`,
+      [hash, JSON.stringify(translationsJson), typesArray]
+    );
+  }
+}
+
 async function insertResource(client, resource) {
   const {
     id,
@@ -20,15 +71,14 @@ async function insertResource(client, resource) {
     opening_hours,
     notes,
     source,
-    lang,
     extended,
   } = resource;
 
   await client.query(
     `INSERT INTO launchpad.resources
-       (id, name, type, lat, lng, address, opening_hours, notes, source, lang, extended, cached_at)
+       (id, name, type, lat, lng, address, opening_hours, notes, source, extended, cached_at)
      VALUES
-       ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+       ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
      ON CONFLICT (id) DO UPDATE SET
        name          = EXCLUDED.name,
        lat           = EXCLUDED.lat,
@@ -48,9 +98,8 @@ async function insertResource(client, resource) {
       opening_hours,
       notes,
       source,
-      lang,
       JSON.stringify(extended ?? {}),
-    ],
+    ]
   );
 }
 
@@ -99,12 +148,15 @@ async function syncSource(sourceName) {
   const resources =
     sourceName === "givefood" ? await fetchGiveFood() : await fetchOverpass();
 
+  const store = {};
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    for (const resource of resources) {
-      await insertResource(client, resource);
+    for (let resource of resources) {
+      resource = extractTranslations(resource, store)
+      await insertResource(client, resource)
     }
+    await upsertTranslations(client, store)
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK");
