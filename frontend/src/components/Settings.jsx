@@ -12,6 +12,8 @@ export default function Settings({ onClose }) {
   const changeLanguage = (lng) => {
     console.log(`[Settings] Core engine language swap triggered: ${lng}`);
 
+    localStorage.setItem('user-language', lng);
+
     i18n.changeLanguage(lng)
       .then(() => {
         console.log(`[Settings] Engine successfully changed active language to: ${i18n.language}`);
@@ -20,7 +22,11 @@ export default function Settings({ onClose }) {
         console.error(`[Settings] Core engine failed to switch languages:`, err);
       });
 
-    document.body.dir = (lng === 'ur') ? 'rtl' : 'ltr';
+    if (lng === 'ur') {
+      document.body.dir = 'rtl';
+    } else {
+      document.body.dir = 'ltr';
+    }
   };
 
   return (
@@ -73,8 +79,8 @@ export default function Settings({ onClose }) {
           <button
             onClick={toggleSync}
             className={`mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${isActive
-                ? 'bg-green-900/30 text-green-400 border-green-900/50'
-                : 'bg-red-900/30 text-red-400 border-red-900/50'
+              ? 'bg-green-900/30 text-green-400 border-green-900/50'
+              : 'bg-red-900/30 text-red-400 border-red-900/50'
               }`}
           >
             {isActive ? 'Stop P2P Sync' : 'Start P2P Sync'}

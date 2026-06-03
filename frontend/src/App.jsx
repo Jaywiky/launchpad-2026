@@ -50,6 +50,9 @@ function App() {
   useEffect(() => {
     const boot = async () => {
       try {
+        const savedLang = localStorage.getItem('user-language') || 'en';
+        document.body.dir = savedLang === 'ur' ? 'rtl' : 'ltr';
+
         console.log('[App] Initialising storage')
         await initializeStorage()
         console.log('[App] Starting sync manager')
