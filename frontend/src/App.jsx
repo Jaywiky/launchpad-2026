@@ -43,6 +43,20 @@ function App() {
     finally { setIsLoading(false) }
   }, [])
 
+  const loadInitialPosition = useCallback(async () => {
+    try {
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: false,
+        timeout: 8000,
+        maximumAge: 60000,
+      })
+      setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+    } catch (e) {
+      console.warn('[App] Initial location unavailable; rendering without it.', e?.message || e)
+    }
+  }, [])
+
+
   useEffect(() => {
     const boot = async () => {
       try {
@@ -51,7 +65,10 @@ function App() {
         console.log('[App] Starting sync manager')
         await startSyncManager()
         console.log('[App] Loading initial resources')
-        await updateResources()
+
+        console.log('[App] Loading initial resources and location')
+        await Promise.all([updateResources(), loadInitialPosition()])
+
       } catch (error) { console.error('[App] Critical error during boot:', error) }
       finally { setReady(true) }
     }
@@ -110,7 +127,9 @@ function App() {
           resources={resources}
           activeCategory={activeCategory}
           onLocationUpdate={setUserPos}
+          userPos={userPos}
           selectedPos={selectedPos}
+
         />
       </div>
 
