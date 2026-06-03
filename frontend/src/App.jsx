@@ -87,7 +87,6 @@ function App() {
     })
 
     window.addEventListener('resourceUpdated', updateResources)
-    window.addEventListener('meshSyncUpdated', updateResources)
 
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
       if (activePageRef.current === 'settings') setActivePage('home')
@@ -97,7 +96,6 @@ function App() {
     return () => {
       stopSyncManager()
       window.removeEventListener('resourceUpdated', updateResources)
-      window.removeEventListener('meshSyncUpdated', updateResources)
       listenerHandle.then(l => l.remove())
       backButtonListener.then(l => l.remove())
     }
