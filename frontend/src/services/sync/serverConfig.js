@@ -1,5 +1,5 @@
 export const SERVER_CONFIG = {
-    BASE_URL: 'http://localhost:3001',
+    BASE_URL: 'http://100.64.0.2:3001',
 
     MANIFEST_PUBLIC_KEY: 'M9naXl9QQzUn2CzCpAEZrO6jUj7y8Xgw0GpB70eQLbY=',
 

@@ -9,15 +9,16 @@ import { initializeStorage, readJsonFile } from './services/storage/fileSystem'
 import { startSyncManager, stopSyncManager } from './services/sync/syncManager'
 import { loadLocalEnvelope } from './services/sync/syncEngine'
 import { useBleSync } from './hooks/useBleSync'
+import { loadTranslatedResources } from './resourceLoader';
 
 function App() {
-  const { t } = useI18nTranslation();
+  const { t, i18n } = useI18nTranslation();
   const [ready, setReady] = useState(false);
   const [activePage, setActivePage] = useState('home');
   const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(['All']);
-  
+
   const [userPos, setUserPos] = useState([52.483, -1.913]);
   const [selectedPos, setSelectedPos] = useState(null);
 
@@ -26,26 +27,38 @@ function App() {
 
   const { isActive, toggleSync } = useBleSync(true)
 
+
   const updateResources = useCallback(async () => {
     try {
       setIsLoading(true)
-      const env = await loadLocalEnvelope()
-      const dataHashes = (env.datasets ?? []).map((d) => d?.data).filter(Boolean)
-      const results = await Promise.all(
-        dataHashes.map((hash) =>
-          readJsonFile(`json_data/${hash}.json`).catch((e) => {
-            console.warn(`[App] Missing resource blob ${hash}:`, e)
-            return []
-          }),
-        ),
-      )
-      setResources(results.flat())
-    } catch (error) { 
-      console.error('[App] Failed to update local resources:', error) 
-    } finally { 
-      setIsLoading(false) 
-    }
-  }, [])
+      const lang = (i18n.language || 'en').split('-')[0]
+      const combined = await loadTranslatedResources(lang)
+      setResources(combined)
+    } catch (error) { console.error('[App] Failed to update local resources:', error) }
+    finally { setIsLoading(false) }
+  }, [i18n])
+
+
+  // const updateResources = useCallback(async () => {
+  //   try {
+  //     setIsLoading(true)
+  //     const env = await loadLocalEnvelope()
+  //     const dataHashes = (env.datasets ?? []).map((d) => d?.data).filter(Boolean)
+  //     const results = await Promise.all(
+  //       dataHashes.map((hash) =>
+  //         readJsonFile(`json_data/${hash}.json`).catch((e) => {
+  //           console.warn(`[App] Missing resource blob ${hash}:`, e)
+  //           return []
+  //         }),
+  //       ),
+  //     )
+  //     setResources(results.flat())
+  //   } catch (error) {
+  //     console.error('[App] Failed to update local resources:', error)
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }, [])
 
   useEffect(() => {
     const boot = async () => {
@@ -59,10 +72,10 @@ function App() {
         await startSyncManager()
         console.log('[App] Loading initial resources')
         await updateResources()
-      } catch (error) { 
-        console.error('[App] Critical error during boot:', error) 
-      } finally { 
-        setReady(true) 
+      } catch (error) {
+        console.error('[App] Critical error during boot:', error)
+      } finally {
+        setReady(true)
       }
     }
 
@@ -127,11 +140,11 @@ function App() {
         />
       </div>
 
-      <ResourceSheet 
-        resources={resources} 
-        isLoading={isLoading} 
-        activeCategory={activeCategory} 
-        setActiveCategory={setActiveCategory} 
+      <ResourceSheet
+        resources={resources}
+        isLoading={isLoading}
+        activeCategory={activeCategory}
+        setActiveCategory={setActiveCategory}
         userPos={userPos}
         onCardClick={setSelectedPos}
       />

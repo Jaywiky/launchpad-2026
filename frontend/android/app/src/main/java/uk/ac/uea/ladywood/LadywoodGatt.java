@@ -387,9 +387,8 @@ public class LadywoodGatt extends Plugin {
     @PluginMethod
     public void stopBroadcasting(PluginCall call) {
         try {
-            if (advertiser != null && advertiseCallback != null) {
+            if (advertiser != null && advertiseCallback != null)
                 advertiser.stopAdvertising(advertiseCallback);
-            }
             if (gattServer != null) {
                 gattServer.clearServices();
                 gattServer.close();
@@ -452,17 +451,13 @@ public class LadywoodGatt extends Plugin {
             if (gattServer == null || !hasConnectPermission())
                 return;
         }
-        try {
-            gattServer.sendResponse(device, requestId, status, offset, value);
-        } catch (SecurityException e) {
-            Log.e(TAG, "sendResponse failed", e);
-        }
+        try { gattServer.sendResponse(device, requestId, status, offset, value); }
+        catch (SecurityException e) { Log.e(TAG, "sendResponse failed", e); }
     }
 
     private void respond(BluetoothDevice device, int requestId, boolean responseNeeded, int status, int offset,
             byte[] value) {
-        if (responseNeeded) {
+        if (responseNeeded) 
             sendResponse(device, requestId, status, offset, value);
-        }
     }
 }
