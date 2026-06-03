@@ -23,13 +23,7 @@ const resources = {
       "green_space": "Green Spaces",
       "loading_local_data": "Loading local data...",
       "no_resources_found": "No resources found.",
-      "waiting_to_sync": "Waiting to sync with nearby peers over Bluetooth...",
-      "p2p_sync": "Background P2P Sync",
-      "p2p_desc": "Allow background access to sync resources with nearby devices via Bluetooth.",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "start_p2p": "Start P2P",
-      "stop_p2p": "Stop P2P"
+      "waiting_to_sync": "Waiting to sync with nearby peers over Bluetooth..."
     }
   },
   pl: {
@@ -51,13 +45,7 @@ const resources = {
       "green_space": "Zielone przestrzenie",
       "loading_local_data": "Ładowanie danych lokalnych...",
       "no_resources_found": "Nie znaleziono zasobów.",
-      "waiting_to_sync": "Oczekiwanie na synchronizację z pobliskimi urządzeniami...",
-      "p2p_sync": "Synchronizacja w tle P2P",
-      "p2p_desc": "Zezwól na dostęp w tle, aby synchronizować dane z urządzeniami w pobliżu przez Bluetooth.",
-      "enabled": "Włączone",
-      "disabled": "Wyłączone",
-      "start_p2p": "Uruchom P2P",
-      "stop_p2p": "Zatrzymaj P2P"
+      "waiting_to_sync": "Oczekiwanie na synchronizację z pobliskimi urządzeniami..."
     }
   },
   ur: {
@@ -79,13 +67,7 @@ const resources = {
       "green_space": "سبزہ زار",
       "loading_local_data": "لوکل ڈیٹا لوڈ ہو رہا ہے...",
       "no_resources_found": "کوئی وسائل نہیں ملے۔",
-      "waiting_to_sync": "بلوٹوتھ کے ذریعے قریبی آلات کے ساتھ مطابقت پذیری کا انتظار ہے...",
-      "p2p_sync": "بیک گراؤنڈ P2P مطابقت پذیری",
-      "p2p_desc": "بلوٹوتھ کے ذریعے قریبی آلات کے ساتھ وسائل کو ہم آہنگ کرنے کے لیے بیک گراؤنڈ تک رسائی کی اجازت دیں۔",
-      "enabled": "فعال",
-      "disabled": "غیر فعال",
-      "start_p2p": "پی ٹو پی شروع کریں",
-      "stop_p2p": "پی ٹو پی روکیں"
+      "waiting_to_sync": "بلوٹوتھ کے ذریعے قریبی آلات کے ساتھ مطابقت پذیری کا انتظار ہے..."
     }
   }
 };
@@ -97,7 +79,7 @@ i18n
     lng: savedLanguage,
     fallbackLng: 'en',
     interpolation: {
-      escapeValue: false
+      escapeValue: false 
     }
   });
 

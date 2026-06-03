@@ -45,6 +45,7 @@ export default function Settings({ onClose }) {
       </div>
 
       <div className="space-y-6">
+        {/* Language Preferences Section */}
         <div className="bg-[#222222] p-4 rounded-xl border border-[#333333]">
           <h2 className="text-lg font-semibold mb-2">{t('language_pref')}</h2>
           <p className="text-sm text-gray-400 mb-4">{t('choose_lang')}</p>
@@ -71,9 +72,10 @@ export default function Settings({ onClose }) {
           </div>
         </div>
 
+        {/* P2P Sync Section */}
         <div className="bg-[#222222] p-4 rounded-xl border border-[#333333]">
-          <h2 className="text-lg font-semibold mb-2">{t('p2p_sync')}</h2>
-          <p className="text-sm text-gray-400">{t('p2p_desc')}</p>
+          <h2 className="text-lg font-semibold mb-2">Toggle P2P</h2>
+          <p className="text-sm text-gray-400">Toggle the ability to download data from Bluetooth.</p>
           <button
             onClick={toggleSync}
             className={`mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${isActive
@@ -81,7 +83,7 @@ export default function Settings({ onClose }) {
               : 'bg-red-900/30 text-red-400 border-red-900/50'
               }`}
           >
-            {isActive ? t('stop_p2p', 'Stop P2P') : t('start_p2p', 'Start P2P')}
+            {isActive ? 'Stop P2P Sync' : 'Start P2P Sync'}
           </button>
         </div>
       </div>
