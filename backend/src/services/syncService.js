@@ -3,23 +3,25 @@ const givefood = require("../apis/givefood");
 const overpass = require("../apis/overpass");
 const { buildManifest } = require("./manifestService");
 const { extractTranslations } = require("../utils/translationExtractor");
-const { translate } = require('@vitalets/google-translate-api');
+const { translate } = require("@vitalets/google-translate-api");
+const { sanitizeResources } = require("../utils/sanitize");
 
 const SOURCES = [
   { name: "givefood", ttl: 24 * 60 * 60 * 1000 },
   { name: "overpass", ttl: 24 * 60 * 60 * 1000 },
 ];
 
-const LIBRETRANSLATE_URL = process.env.LIBRETRANSLATE_URL || "http://localhost:5000"
-const LIBRETRANSLATE_API_KEY = process.env.LIBRETRANSLATE_API_KEY || ""
-const TARGET_LANGS = ["pl", "ur"]
- 
+const LIBRETRANSLATE_URL =
+  process.env.LIBRETRANSLATE_URL || "http://localhost:5000";
+const LIBRETRANSLATE_API_KEY = process.env.LIBRETRANSLATE_API_KEY || "";
+const TARGET_LANGS = ["pl", "ur"];
+
 async function translateBatch(texts, targetLang) {
-  if (texts.length === 0) return []
- 
-  const body = { q: texts, source: "en", target: targetLang, format: "text" }
-  if (LIBRETRANSLATE_API_KEY) body.api_key = LIBRETRANSLATE_API_KEY
- 
+  if (texts.length === 0) return [];
+
+  const body = { q: texts, source: "en", target: targetLang, format: "text" };
+  if (LIBRETRANSLATE_API_KEY) body.api_key = LIBRETRANSLATE_API_KEY;
+
   const res = await fetch(`${LIBRETRANSLATE_URL}/translate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -135,18 +137,20 @@ async function fetchGiveFood() {
     list.map((item) => givefood.fetchById(item.id)),
   );
 
-  return enriched.map((r, i) => {
-    if (r.status === "fulfilled" && r.value) return r.value;
-    console.warn(`GiveFood: Failed to enrich item ${list[i].id}`);
-    return list[i]; // Return original item if enrichment fails
-  });
+  return sanitizeResources(
+    enriched.map((r, i) => {
+      if (r.status === "fulfilled" && r.value) return r.value;
+      console.warn(`GiveFood: Failed to enrich item ${list[i].id}`);
+      return list[i]; // Return original item if enrichment fails
+    }),
+  );
 }
 
 // Fetch from Overpass API
 async function fetchOverpass() {
   const list = await overpass.fetch();
   console.log(`Overpass: Fetched ${list.length} resources.`);
-  return list;
+  return sanitizeResources(list);
 }
 
 // Check if resource needs update based on TTL
