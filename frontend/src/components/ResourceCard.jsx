@@ -1,11 +1,26 @@
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 
-function ResourceCard({ name, type, notes, extended, distance, onClick }) {
+const extendedStyles = {
+    referral_required: { icon: '⚠️', label: 'Referral Required', bg: 'bg-[#fadbe9]', text: 'text-[#5c133a]' },
+    accessible: { icon: '♿', label: 'Wheelchair Accessible', bg: 'bg-[#1e3a8a]/30', text: 'text-blue-200' },
+    membership_required: { icon: '💳', label: 'Membership Required', bg: 'bg-purple-900/40', text: 'text-purple-200' },
+    women_only: { icon: '🚺', label: 'Women Only', bg: 'bg-pink-900/40', text: 'text-pink-200' },
+};
+
+const formatUnknownKey = (key) => {
+    return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
+function ResourceCard({ id, name, type, address, opening_hours, notes, extended, distance, isExpanded, onToggle, onMapClick }) {
     const { t } = useTranslation();
 
     return (
-        <div 
-            onClick={onClick}
+        <div
+            onClick={() => {
+                onToggle();
+                if (!isExpanded && onMapClick) onMapClick();
+            }}
             className="bg-[#2d2d2d] p-4 rounded-xl border border-gray-700 space-y-3 hover:border-blue-500/50 cursor-pointer transition-all active:scale-[0.99]"
         >
             <div className="flex justify-between items-start">
@@ -24,10 +39,58 @@ function ResourceCard({ name, type, notes, extended, distance, onClick }) {
                     )}
                 </div>
             </div>
-            {extended && extended.referral_required && <p className="bg-[#fadbe9] text-[#5c133a] p-3 rounded-lg text-sm">⚠️ Referral Required</p>}
-            {extended && extended.accessible && <p>♿ Wheelchair Accessible</p>}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                        animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                        exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                        className="flex flex-col gap-3 border-t border-gray-700 pt-3"
+                    >
+                        {address && (
+                            <div className="flex items-start gap-2 text-sm text-gray-300">
+                                <span>📍</span>
+                                <p>{address}</p>
+                            </div>
+                        )}
+
+                        {opening_hours && (
+                            <div className="flex items-start gap-2 text-sm text-blue-400">
+                                <span>🕒</span>
+                                <p>{opening_hours}</p>
+                            </div>
+                        )}
+                        {extended && Object.entries(extended).map(([key, value]) => {
+                            if (value === false) return null;
+                            if (extendedStyles[key]) return null;
+                            const displayValue = value === true ? '' : `: ${value}`;
+                            return (
+                                <div key={key} className="flex items-start gap-2 text-sm text-gray-300 mt-1">
+                                    <p className="leading-relaxed">
+                                        <span className="font-semibold text-gray-200">{formatUnknownKey(key)}</span>
+                                        {displayValue}
+                                    </p>
+                                </div>
+                            );
+                        })}
+
+                        {extended && Object.entries(extended).map(([key, value]) => {
+                            if (value === false) return null;
+
+                            const style = extendedStyles[key];
+                            if (style) {
+                                return (
+                                    <p key={key} className={`${style.bg} ${style.text} p-3 rounded-lg text-sm mt-1`}>
+                                        {style.icon} {style.label}
+                                    </p>
+                                );
+                            }
+                            return null;
+                        })}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
-
 export default ResourceCard;
