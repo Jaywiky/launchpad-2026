@@ -26,65 +26,52 @@ async function translateBatch(texts, targetLang) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
-  if (!res.ok)
-    throw new Error(`LibreTranslate ${targetLang} responded ${res.status}`);
-
-  const data = await res.json();
-  return Array.isArray(data.translatedText)
-    ? data.translatedText
-    : [data.translatedText];
+  })
+  if (!res.ok) throw new Error(`LibreTranslate ${targetLang} responded ${res.status}`)
+ 
+  const data = await res.json()
+  return Array.isArray(data.translatedText) ? data.translatedText : [data.translatedText]
 }
-
+ 
 async function upsertTranslations(client, store) {
-  const hashes = Object.keys(store);
-  if (hashes.length === 0) return;
-
-  const haveAll = TARGET_LANGS.map((l) => `translations ? '${l}'`).join(
-    " AND ",
-  );
+  const hashes = Object.keys(store)
+  if (hashes.length === 0) return
+ 
+  const haveAll = TARGET_LANGS.map((l) => `translations ? '${l}'`).join(" AND ")
   const { rows } = await client.query(
     `SELECT hash FROM launchpad.data_translations
      WHERE hash = ANY($1::text[]) AND ${haveAll}`,
-    [hashes],
-  );
-  const completeHashes = new Set(rows.map((r) => r.hash));
-  const newHashes = hashes.filter((h) => !completeHashes.has(h));
-
-  console.log(
-    `Translations: ${hashes.length} strings, ${newHashes.length} need translating.`,
-  );
-  const translated = {};
-  for (const h of newHashes) translated[h] = { en: store[h].en };
-
+    [hashes]
+  )
+  const completeHashes = new Set(rows.map((r) => r.hash))
+  const newHashes = hashes.filter((h) => !completeHashes.has(h))
+ 
+  console.log(`Translations: ${hashes.length} strings, ${newHashes.length} need translating.`)
+  const translated = {}
+  for (const h of newHashes) translated[h] = { en: store[h].en }
+ 
   if (newHashes.length > 0) {
-    const newTexts = newHashes.map((h) => store[h].en);
-
+    const newTexts = newHashes.map((h) => store[h].en)
+ 
     const results = await Promise.allSettled(
-      TARGET_LANGS.map(async (lang) => ({
-        lang,
-        out: await translateBatch(newTexts, lang),
-      })),
-    );
-
+      TARGET_LANGS.map(async (lang) => ({ lang, out: await translateBatch(newTexts, lang) }))
+    )
+ 
     for (const r of results) {
       if (r.status === "fulfilled") {
         newHashes.forEach((h, i) => {
-          if (r.value.out[i]) translated[h][r.value.lang] = r.value.out[i];
-        });
+          if (r.value.out[i]) translated[h][r.value.lang] = r.value.out[i]
+        })
       } else {
-        console.error(
-          "Translation batch failed:",
-          r.reason?.message || r.reason,
-        );
+        console.error("Translation batch failed:", r.reason?.message || r.reason)
       }
     }
   }
-
+ 
   for (const hash of hashes) {
-    const typesArray = Array.from(store[hash].types);
-    const translationsJson = translated[hash] ?? { en: store[hash].en };
-
+    const typesArray = Array.from(store[hash].types)
+    const translationsJson = translated[hash] ?? { en: store[hash].en }
+ 
     await client.query(
       `INSERT INTO launchpad.data_translations (hash, translations, used_in_types)
        VALUES ($1, $2::jsonb, $3::text[])
@@ -92,10 +79,11 @@ async function upsertTranslations(client, store) {
          used_in_types = ARRAY(
            SELECT DISTINCT UNNEST(launchpad.data_translations.used_in_types || EXCLUDED.used_in_types)
          )`,
-      [hash, JSON.stringify(translationsJson), typesArray],
-    );
+      [hash, JSON.stringify(translationsJson), typesArray]
+    )
   }
 }
+
 
 async function insertResource(client, resource) {
   const {
@@ -136,7 +124,7 @@ async function insertResource(client, resource) {
       notes,
       source,
       JSON.stringify(extended ?? {}),
-    ],
+    ]
   );
 }
 
@@ -192,10 +180,10 @@ async function syncSource(sourceName) {
   try {
     await client.query("BEGIN");
     for (let resource of resources) {
-      resource = extractTranslations(resource, store);
-      await insertResource(client, resource);
+      resource = extractTranslations(resource, store)
+      await insertResource(client, resource)
     }
-    await upsertTranslations(client, store);
+    await upsertTranslations(client, store)
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK");
