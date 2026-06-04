@@ -1,6 +1,7 @@
 const pool = require("../../database/db");
 const givefood = require("../apis/givefood");
 const overpass = require("../apis/overpass");
+const { sanitizeResources } = require("../utils/sanitize");
 
 const SOURCES = [
   { name: "givefood", ttl: 24 * 60 * 60 * 1000 },
@@ -62,18 +63,20 @@ async function fetchGiveFood() {
     list.map((item) => givefood.fetchById(item.id)),
   );
 
-  return enriched.map((r, i) => {
-    if (r.status === "fulfilled" && r.value) return r.value;
-    console.warn(`GiveFood: Failed to enrich item ${list[i].id}`);
-    return list[i]; // Return original item if enrichment fails
-  });
+  return sanitizeResources(
+    enriched.map((r, i) => {
+      if (r.status === "fulfilled" && r.value) return r.value;
+      console.warn(`GiveFood: Failed to enrich item ${list[i].id}`);
+      return list[i]; // Return original item if enrichment fails
+    }),
+  );
 }
 
 // Fetch from Overpass API
 async function fetchOverpass() {
   const list = await overpass.fetch();
   console.log(`Overpass: Fetched ${list.length} resources.`);
-  return list;
+  return sanitizeResources(list);
 }
 
 // Check if resource needs update based on TTL
