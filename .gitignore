@@ -81,3 +81,5 @@ capacitor.build.gradle
 
 # Test files
 /backend/test*
+
+frontend/src/services/sync/serverConfig.js

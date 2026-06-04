@@ -135,7 +135,6 @@ function mapElement(element) {
     opening_hours: tags.opening_hours || null,
     notes: tags.description || null,
     source: "overpass",
-    lang: "en",
     extended: buildExtended(type, tags),
   };
 }

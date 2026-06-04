@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { Geolocation } from '@capacitor/geolocation'
+import { App as CapacitorApp } from '@capacitor/app'
+import { useTranslation } from 'react-i18next'
+
+const getMarkerColor = (type) => {
+  switch (type) {
+    case 'food_bank': return '#2E7D32';   
+    case 'toilet': return '#1565C0';      
+    case 'library': return '#EF6C00';     
+    case 'recycling': return '#00838F';   
+    case 'green_space': return '#558B2F'; 
+    default: return '#757575';            
+  }
+}
 
 function RecenterOnce({ pos }) {
   const map = useMap()
@@ -13,6 +26,16 @@ function RecenterOnce({ pos }) {
     }
   }, [pos, hasRecentered, map])
 
+  return null
+}
+
+function FlyToSelectedResource({ pos }) {
+  const map = useMap()
+  useEffect(() => {
+    if (pos) {
+      map.flyTo(pos, 16, { duration: 0.8 })
+    }
+  }, [pos, map])
   return null
 }
 
@@ -53,15 +76,14 @@ function LocateButton({ pos, loading, onLocate }) {
   )
 }
 
-export default function UserMap() {
+export default function UserMap({ resources = [], activeCategory = ['All'], onLocationUpdate, selectedPos }) {
+  const { t } = useTranslation()
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [isRealPos, setIsRealPos] = useState(false)
 
   const fetchLocation = async () => {
     setLoading(true)
-    setError(null)
 
     try {
       await Geolocation.requestPermissions()
@@ -71,21 +93,25 @@ export default function UserMap() {
           enableHighAccuracy: false,
           timeout: 15000,
         })
-        setUserPos([pos.coords.latitude, pos.coords.longitude])
+        const coords = [pos.coords.latitude, pos.coords.longitude];
+        setUserPos(coords)
         setIsRealPos(true)
+        if (onLocationUpdate) onLocationUpdate(coords)
       } catch {
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 30000,
         })
-        setUserPos([pos.coords.latitude, pos.coords.longitude])
+        const coords = [pos.coords.latitude, pos.coords.longitude];
+        setUserPos(coords)
         setIsRealPos(true)
+        if (onLocationUpdate) onLocationUpdate(coords)
       }
     } catch (err) {
-      console.error('Location error:', err)
-      setError('Could not get location')
-      setUserPos([52.475109, -1.922240])
+      const fallbackCoords = [52.483, -1.913];
+      setUserPos(fallbackCoords)
       setIsRealPos(false)
+      if (onLocationUpdate) onLocationUpdate(fallbackCoords)
     } finally {
       setLoading(false)
     }
@@ -93,29 +119,88 @@ export default function UserMap() {
 
   useEffect(() => {
     fetchLocation()
+
+    const listenerHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        console.log('[UserMap] App returned to foreground, refreshing location data')
+        fetchLocation()
+      }
+    })
+
+    return () => {
+      listenerHandle.then(l => l.remove())
+    }
   }, [])
+
+  const visibleMarkers = resources.filter((item) => {
+    if (!item) return false;
+    if (activeCategory.includes('All')) return true;
+    return activeCategory.includes(item.type);
+  });
 
   return (
     <div className="fixed inset-0 z-0">
-      {error && (
-        <div className="absolute top-2 left-2 right-2 z-[1000] bg-red-100 text-red-700 text-sm px-3 py-2 rounded-lg">
-          {error}
-          <button onClick={fetchLocation} className="ml-2 underline">Retry</button>
-        </div>
-      )}
+      <style>{`
+        .leaflet-right .leaflet-control-zoom {
+          margin-top: 75px !important;
+          margin-right: 18px !important; 
+        }
+      `}</style>
 
       <MapContainer
         center={[52.481346, -1.918235]}
         zoom={13}
         scrollWheelZoom={true}
         className="h-full w-full z-0"
+        zoomControl={false}
       >
+        <ZoomControl position="topright" />
         <TileLayer
           attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
         <RecenterOnce pos={userPos} />
+        <FlyToSelectedResource pos={selectedPos} />
+
+        {visibleMarkers.map((item) => {
+          if (!item || !item.lat || !item.lng) return null;
+
+          return (
+            <CircleMarker
+              key={item.id}
+              center={[Number(item.lat), Number(item.lng)]}
+              radius={9}
+              pathOptions={{
+                fillColor: getMarkerColor(item.type),
+                fillOpacity: 0.85,
+                color: '#FFFFFF',
+                weight: 2,
+              }}
+            >
+              <Popup>
+                <div className="text-black font-sans min-w-[160px]">
+                  <h3 className="font-bold text-sm leading-tight mb-0.5">{item.name}</h3>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
+                    {t(item.type.toLowerCase())}
+                  </span>
+
+                  {item.address && (
+                    <p className="text-xs text-gray-600 mt-1.5 border-t border-gray-100 pt-1">
+                      📍 {item.address}
+                    </p>
+                  )}
+
+                  {item.opening_hours && (
+                    <p className="text-xs text-blue-700 font-medium mt-1">
+                      🕒 {item.opening_hours}
+                    </p>
+                  )}
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
 
         {userPos && (
           <>
@@ -139,9 +224,7 @@ export default function UserMap() {
                 color: '#ffffff',
                 weight: 3,
               }}
-            >
-              <Popup>{isRealPos ? 'You are here' : 'Approximate location'}</Popup>
-            </CircleMarker>
+            />
           </>
         )}
 

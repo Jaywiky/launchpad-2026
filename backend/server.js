@@ -2,7 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const errorHandler = require("./src/middleware/errorHandler");
-const resourceRoutes = require("./src/routes/resources");
+// const resourceRoutes = require("./src/routes/resources");
+const manifestRoutes = require("./src/routes/manifest");
+
 const { bootSync, scheduledSync } = require("./src/services/syncService");
 
 const app = express();
@@ -20,7 +22,8 @@ app.get("/health", (_req, res) => {
 });
 
 // Routes
-app.use("/api", resourceRoutes);
+// app.use("/api", resourceRoutes);
+app.use("/api", manifestRoutes)
 
 // 404
 app.use((req, res) => {
