@@ -6,12 +6,12 @@ import { useTranslation } from 'react-i18next'
 
 const getMarkerColor = (type) => {
   switch (type) {
-    case 'food_bank': return '#2E7D32';   
-    case 'toilet': return '#1565C0';      
-    case 'library': return '#EF6C00';     
-    case 'recycling': return '#00838F';   
-    case 'green_space': return '#558B2F'; 
-    default: return '#757575';            
+    case 'food_bank': return '#2E7D32';
+    case 'toilet': return '#1565C0';
+    case 'library': return '#EF6C00';
+    case 'recycling': return '#00838F';
+    case 'green_space': return '#558B2F';
+    default: return '#757575';
   }
 }
 
@@ -33,7 +33,12 @@ function FlyToSelectedResource({ pos }) {
   const map = useMap()
   useEffect(() => {
     if (pos) {
-      map.flyTo(pos, 16, { duration: 0.8 })
+      const targetZoom = 16;
+      const targetPoint = map.project(pos, targetZoom);
+      const yOffset = window.innerHeight * 0.25;
+      targetPoint.y += yOffset;
+      const offsetLatLng = map.unproject(targetPoint, targetZoom);
+      map.flyTo(offsetLatLng, targetZoom, { duration: 0.8 });
     }
   }, [pos, map])
   return null

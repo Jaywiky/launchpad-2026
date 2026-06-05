@@ -81,11 +81,13 @@ async function seedFakeData() {
 export default function ResourceSheet({ resources, isLoading, activeCategory, setActiveCategory, userPos, onCardClick }) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
+    const [expandedCardId, setExpandedCardId] = useState(null);
 
     const sheetY = useMotionValue(0);
     const dragRef = useRef({ startY: 0, startVal: 0, lastY: 0, lastTime: 0 });
 
     const minY = -(window.innerHeight * 0.55);
+    const midY = -(window.innerHeight * 0.15);
     const maxY = 0;
 
 
@@ -238,21 +240,41 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                     </div>
                 )}
 
-                {!isLoading && sortedResources.map((resource, index) => (
-                    <ResourceCard
-                        key={resource.id || index}
-                        name={resource.name}
-                        type={resource.type}
-                        notes={resource.notes}
-                        extended={resource.extended}
-                        distance={resource.distance}
-                        onClick={() => {
-                            if (resource.lat && resource.lng && onCardClick) {
-                                onCardClick([Number(resource.lat), Number(resource.lng)]);
-                            }
-                        }}
-                    />
-                ))}
+                {!isLoading && sortedResources.map((resource, index) => {
+                    
+                    const uniqueId = resource.id || index;
+
+                    return (
+                        <ResourceCard
+                            key={uniqueId}
+                            id={uniqueId}
+                            name={resource.name}
+                            type={resource.type}
+                            address={resource.address}
+                            opening_hours={resource.opening_hours}
+                            notes={resource.notes}
+                            extended={resource.extended}
+                            distance={resource.distance}
+
+                            isExpanded={expandedCardId === uniqueId}
+                            onToggle={() => {
+                                const isOpening = expandedCardId !== uniqueId;
+                                setExpandedCardId(isOpening ? uniqueId : null);
+
+                                if (isOpening) {
+                                    animate(sheetY, midY, { type: 'spring', damping: 30, stiffness: 300 });
+                                    setIsExpanded(true);
+                                }
+                            }}
+
+                            onMapClick={() => {
+                                if (resource.lat && resource.lng && onCardClick) {
+                                    onCardClick([Number(resource.lat), Number(resource.lng)]);
+                                }
+                            }}
+                        />
+                    );
+                })}
             </div>
         </motion.div>
     );
