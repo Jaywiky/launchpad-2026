@@ -171,6 +171,8 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
         {visibleMarkers.map((item) => {
           if (!item || !item.lat || !item.lng) return null;
 
+          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}`;
+
           return (
             <CircleMarker
               key={item.id}
@@ -201,6 +203,14 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
                       🕒 {item.opening_hours}
                     </p>
                   )}
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 flex items-center justify-center w-full bg-[#4285F4] hover:bg-[#3367D6] !text-white py-1.5 rounded text-xs font-semibold transition-colors shadow-sm"
+                  >
+                    {t('get_directions', 'Get Directions')}
+                  </a>
                 </div>
               </Popup>
             </CircleMarker>
