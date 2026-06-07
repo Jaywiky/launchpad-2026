@@ -83,7 +83,6 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandedCardId, setExpandedCardId] = useState(null);
 
-    // Bounding measurement handles
     const headerRef = useRef(null);
     const filterRef = useRef(null);
     const cardsRef = useRef(null);
@@ -94,7 +93,6 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
     const minY = -(window.innerHeight * 0.55);
     const maxY = 0;
 
-    // Monitor card toggles to pixel-match the layout boundary
     useEffect(() => {
         if (expandedCardId !== null && headerRef.current && filterRef.current && cardsRef.current) {
             setTimeout(() => {
@@ -108,7 +106,6 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                 const defaultPeekHeight = window.innerHeight * 0.3;
                 const targetTranslationY = defaultPeekHeight - totalRequiredHeight;
 
-                // Clamp container position so it never over-stretches beyond maximum bounds
                 const clampedY = Math.max(minY, Math.min(0, targetTranslationY));
 
                 animate(sheetY, clampedY, { type: 'spring', damping: 30, stiffness: 300 });

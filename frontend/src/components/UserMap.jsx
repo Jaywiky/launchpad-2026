@@ -7,21 +7,21 @@ import { useTranslation } from 'react-i18next'
 const getMarkerColor = (type, colorBlind) => {
   if (colorBlind) {
     switch (type) {
-      case 'food_bank': return '#E69F00';  
-      case 'toilet': return '#56B4E9';    
-      case 'library': return '#009E73';    
-      case 'recycling': return '#F0E442';   
-      case 'green_space': return '#CC79A7';  
+      case 'food_bank': return '#E69F00';
+      case 'toilet': return '#56B4E9';
+      case 'library': return '#009E73';
+      case 'recycling': return '#F0E442';
+      case 'green_space': return '#CC79A7';
       default: return '#757575';
     }
   } else {
     switch (type) {
-      case 'food_bank': return '#2E7D32';   
-      case 'toilet': return '#1565C0';      
-      case 'library': return '#EF6C00';     
-      case 'recycling': return '#00838F';   
-      case 'green_space': return '#558B2F'; 
-      default: return '#757575';            
+      case 'food_bank': return '#2E7D32';
+      case 'toilet': return '#1565C0';
+      case 'library': return '#EF6C00';
+      case 'recycling': return '#00838F';
+      case 'green_space': return '#558B2F';
+      default: return '#757575';
     }
   }
 }
@@ -42,6 +42,7 @@ function RecenterOnce({ pos }) {
 
 function FlyToSelectedResource({ pos }) {
   const map = useMap()
+
   useEffect(() => {
     if (pos) {
       const targetZoom = 16;
@@ -49,9 +50,24 @@ function FlyToSelectedResource({ pos }) {
       const yOffset = window.innerHeight * 0.25;
       targetPoint.y += yOffset;
       const offsetLatLng = map.unproject(targetPoint, targetZoom);
+
       map.flyTo(offsetLatLng, targetZoom, { duration: 0.8 });
+
+      map.eachLayer((layer) => {
+        if (layer.getLatLng && typeof layer.openPopup === 'function') {
+          const layerLatLng = layer.getLatLng();
+
+          if (
+            Math.abs(layerLatLng.lat - pos[0]) < 0.0001 &&
+            Math.abs(layerLatLng.lng - pos[1]) < 0.0001
+          ) {
+            layer.openPopup();
+          }
+        }
+      });
     }
   }, [pos, map])
+
   return null
 }
 
@@ -172,7 +188,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
       >
         <ZoomControl position="topright" />
         <TileLayer
-          attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -182,10 +198,10 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
         {visibleMarkers.map((item) => {
           if (!item || !item.lat || !item.lng) return null;
 
-          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}`;
+          const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`;
 
           return (
-            <CircleMarker 
+            <CircleMarker
               key={item.id}
               center={[Number(item.lat), Number(item.lng)]}
               radius={9}
