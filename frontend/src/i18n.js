@@ -28,6 +28,10 @@ const resources = {
       "bg_p2p_desc": "Allow the network to continue running when the app is minimized.",
       "allow_bg": "Allowed",
       "deny_bg": "Denied",
+      "colorblind_mode": "Color Blind Mode",
+      "colorblind_desc": "Use a high-contrast palette optimized for color vision deficiencies.",
+      "high_contrast_on": "High Contrast: ON",
+      "high_contrast_off": "High Contrast: OFF",
     }
   },
   pl: {
@@ -54,6 +58,10 @@ const resources = {
       "bg_p2p_desc": "Zezwól sieci na dalsze działanie po zminimalizowaniu aplikacji.",
       "allow_bg": "Dozwolone",
       "deny_bg": "Zabronione",
+      "colorblind_mode": "Tryb dla daltonistów",
+      "colorblind_desc": "Użyj palety o wysokim kontraście zoptymalizowanej pod kątem zaburzeń rozpoznawania barw.",
+      "high_contrast_on": "Wysoki kontrast: WŁ",
+      "high_contrast_off": "Wysoki kontrast: WYŁ",
     }
   },
   ur: {
@@ -80,6 +88,10 @@ const resources = {
       "bg_p2p_desc": "ایپ کو منیمائز کرنے پر بھی نیٹ ورک کو چلتے رہنے کی اجازت دیں۔",
       "allow_bg": "اجازت ہے",
       "deny_bg": "ممنوع ہے",
+      "colorblind_mode": "کلر بلائنڈ موڈ",
+      "colorblind_desc": "رنگوں کے ادراک کی کمزوریوں کے لیے بہترین ہائی کنٹراسٹ پیلیٹ استعمال کریں۔",
+      "high_contrast_on": "ہائی کنٹراسٹ: آن",
+      "high_contrast_off": "ہائی کنٹراسٹ: آف",
     }
   }
 };

@@ -4,14 +4,25 @@ import { Geolocation } from '@capacitor/geolocation'
 import { App as CapacitorApp } from '@capacitor/app'
 import { useTranslation } from 'react-i18next'
 
-const getMarkerColor = (type) => {
-  switch (type) {
-    case 'food_bank': return '#2E7D32';
-    case 'toilet': return '#1565C0';
-    case 'library': return '#EF6C00';
-    case 'recycling': return '#00838F';
-    case 'green_space': return '#558B2F';
-    default: return '#757575';
+const getMarkerColor = (type, colorBlind) => {
+  if (colorBlind) {
+    switch (type) {
+      case 'food_bank': return '#E69F00';  
+      case 'toilet': return '#56B4E9';    
+      case 'library': return '#009E73';    
+      case 'recycling': return '#F0E442';   
+      case 'green_space': return '#CC79A7';  
+      default: return '#757575';
+    }
+  } else {
+    switch (type) {
+      case 'food_bank': return '#2E7D32';   
+      case 'toilet': return '#1565C0';      
+      case 'library': return '#EF6C00';     
+      case 'recycling': return '#00838F';   
+      case 'green_space': return '#558B2F'; 
+      default: return '#757575';            
+    }
   }
 }
 
@@ -81,7 +92,7 @@ function LocateButton({ pos, loading, onLocate }) {
   )
 }
 
-export default function UserMap({ resources = [], activeCategory = ['All'], onLocationUpdate, selectedPos }) {
+export default function UserMap({ resources = [], activeCategory = ['All'], onLocationUpdate, selectedPos, colorBlind }) {
   const { t } = useTranslation()
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -174,12 +185,12 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
           const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}`;
 
           return (
-            <CircleMarker
+            <CircleMarker 
               key={item.id}
               center={[Number(item.lat), Number(item.lng)]}
               radius={9}
               pathOptions={{
-                fillColor: getMarkerColor(item.type),
+                fillColor: getMarkerColor(item.type, colorBlind),
                 fillOpacity: 0.85,
                 color: '#FFFFFF',
                 weight: 2,

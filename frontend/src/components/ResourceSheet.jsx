@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, animate } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import ResourceCard from './ResourceCard';
@@ -83,13 +83,42 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandedCardId, setExpandedCardId] = useState(null);
 
+    // Bounding measurement handles
+    const headerRef = useRef(null);
+    const filterRef = useRef(null);
+    const cardsRef = useRef(null);
+
     const sheetY = useMotionValue(0);
     const dragRef = useRef({ startY: 0, startVal: 0, lastY: 0, lastTime: 0 });
 
     const minY = -(window.innerHeight * 0.55);
-    const midY = -(window.innerHeight * 0.15);
     const maxY = 0;
 
+    // Monitor card toggles to pixel-match the layout boundary
+    useEffect(() => {
+        if (expandedCardId !== null && headerRef.current && filterRef.current && cardsRef.current) {
+            setTimeout(() => {
+                if (!headerRef.current || !filterRef.current || !cardsRef.current) return;
+
+                const headerH = headerRef.current.offsetHeight;
+                const filterH = filterRef.current.offsetHeight;
+                const cardsH = cardsRef.current.scrollHeight;
+                const totalRequiredHeight = headerH + filterH + cardsH + 24; 
+
+                const defaultPeekHeight = window.innerHeight * 0.3;
+                const targetTranslationY = defaultPeekHeight - totalRequiredHeight;
+
+                // Clamp container position so it never over-stretches beyond maximum bounds
+                const clampedY = Math.max(minY, Math.min(0, targetTranslationY));
+
+                animate(sheetY, clampedY, { type: 'spring', damping: 30, stiffness: 300 });
+                setIsExpanded(true);
+            }, 60);
+        } else if (expandedCardId === null) {
+            animate(sheetY, 0, { type: 'spring', damping: 30, stiffness: 300 });
+            setIsExpanded(false);
+        }
+    }, [expandedCardId, minY, sheetY]);
 
     const filteredResources = resources.filter((resource) => {
         if (!resource) return false;
@@ -176,6 +205,7 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
             }}
         >
             <div
+                ref={headerRef}
                 className="p-4 pt-6 flex flex-col items-center shrink-0 touch-none"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
@@ -206,7 +236,7 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                 </button>
             </div>
 
-            <div className="px-4 mb-4 flex gap-2 shrink-0 overflow-x-auto">
+            <div ref={filterRef} className="px-4 mb-4 flex gap-2 shrink-0 overflow-x-auto">
                 {typeFilters.map((category) => {
                     const isActive = activeCategory.includes(category);
 
@@ -218,8 +248,8 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                                 handleFilterClick(category);
                             }}
                             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${isActive
-                                ? 'bg-[#e2f0d9] text-green-900'
-                                : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
+                                    ? 'bg-[#e2f0d9] text-green-900'
+                                    : 'bg-[#333333] text-gray-400 hover:bg-[#444444]'
                                 }`}
                         >
                             {t(category.toLowerCase())}
@@ -228,7 +258,7 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                 })}
             </div>
 
-            <div className="px-4 pb-8 overflow-y-auto flex-1 space-y-4">
+            <div ref={cardsRef} className="px-4 pb-8 overflow-y-auto flex-1 space-y-4">
                 {isLoading && (
                     <p className="text-gray-400 text-center mt-10">{t('loading_local_data')}</p>
                 )}
@@ -241,7 +271,6 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                 )}
 
                 {!isLoading && sortedResources.map((resource, index) => {
-                    
                     const uniqueId = resource.id || index;
 
                     return (
@@ -255,18 +284,11 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                             notes={resource.notes}
                             extended={resource.extended}
                             distance={resource.distance}
-
                             isExpanded={expandedCardId === uniqueId}
                             onToggle={() => {
                                 const isOpening = expandedCardId !== uniqueId;
                                 setExpandedCardId(isOpening ? uniqueId : null);
-
-                                if (isOpening) {
-                                    animate(sheetY, midY, { type: 'spring', damping: 30, stiffness: 300 });
-                                    setIsExpanded(true);
-                                }
                             }}
-
                             onMapClick={() => {
                                 if (resource.lat && resource.lng && onCardClick) {
                                     onCardClick([Number(resource.lat), Number(resource.lng)]);

@@ -3,10 +3,9 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { useBleSync } from '../hooks/useBleSync';
 
-export default function Settings({ onClose }) {
+export default function Settings({ onClose, isActive, toggleSync, colorBlind, setColorBlind }) {
   const { t } = useTranslation();
-  const { isActive, toggleSync } = useBleSync();
-  
+
   const [allowBackground, setAllowBackground] = useState(() => {
     return localStorage.getItem('allow-background-p2p') === 'true';
   });
@@ -39,6 +38,13 @@ export default function Settings({ onClose }) {
     setAllowBackground(nextVal);
     localStorage.setItem('allow-background-p2p', String(nextVal));
     console.log(`[Settings] Background P2P permission updated: ${nextVal}`);
+  };
+
+  const toggleColorBlind = () => {
+    const nextVal = !colorBlind;
+    setColorBlind(nextVal);
+    localStorage.setItem('colorblind-mode', String(nextVal));
+    console.log(`[Settings] Color Blind accessible palette set to: ${nextVal}`);
   };
 
   return (
@@ -108,6 +114,17 @@ export default function Settings({ onClose }) {
               }`}
           >
             {allowBackground ? t('allow_bg', 'Allowed') : t('deny_bg', 'Denied')}
+          </button>
+        </div>
+        
+        <div className="bg-[#222222] p-4 rounded-xl border border-[#333333]">
+          <h2 className="text-lg font-semibold mb-2">{t('colorblind_mode', 'Color Blind Mode')}</h2>
+          <p className="text-sm text-gray-400">{t('colorblind_desc', 'Use a high-contrast palette optimized for color vision deficiencies.')}</p>
+          <button
+            onClick={toggleColorBlind}
+            className={`mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${colorBlind ? 'bg-green-900/30 text-green-400 border-green-900/50' : 'bg-red-900/30 text-red-400 border-red-900/50'}`}
+          >
+            {colorBlind ? t('high_contrast_on', 'High Contrast: ON') : t('high_contrast_off', 'High Contrast: OFF')}
           </button>
         </div>
       </div>

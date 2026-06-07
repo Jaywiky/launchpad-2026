@@ -21,6 +21,9 @@ function App() {
 
   const [userPos, setUserPos] = useState([52.483, -1.913]);
   const [selectedPos, setSelectedPos] = useState(null);
+  const [colorBlind, setColorBlind] = useState(() => {
+    return localStorage.getItem('colorblind-mode') === 'true';
+  });
 
   const activePageRef = useRef(activePage);
   useEffect(() => { activePageRef.current = activePage }, [activePage]);
@@ -115,6 +118,8 @@ function App() {
         onClose={() => setActivePage('home')}
         isActive={isActive}
         toggleSync={toggleSync}
+        colorBlind={colorBlind}
+        setColorBlind={setColorBlind}
       />
     )
   }
@@ -135,6 +140,7 @@ function App() {
           onLocationUpdate={setUserPos}
           userPos={userPos}
           selectedPos={selectedPos}
+          colorBlind={colorBlind}
         />
       </div>
 
