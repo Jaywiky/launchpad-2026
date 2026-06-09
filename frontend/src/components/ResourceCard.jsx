@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Predefined visual configurations for important resource attributes
 const extendedStyles = {
     referral_required: { icon: '⚠️', label: 'Referral Required', bg: 'bg-[#fadbe9]', text: 'text-[#5c133a]' },
     accessible: { icon: '♿', label: 'Wheelchair Accessible', bg: 'bg-[#1e3a8a]/30', text: 'text-blue-200' },
@@ -8,6 +9,7 @@ const extendedStyles = {
     women_only: { icon: '🚺', label: 'Women Only', bg: 'bg-pink-900/40', text: 'text-pink-200' },
 };
 
+// Utility to convert unexpected/dynamic snake_case keys into readable Title Case
 const formatUnknownKey = (key) => {
     return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
@@ -19,6 +21,7 @@ function ResourceCard({ id, name, type, address, opening_hours, notes, extended,
         <div
             onClick={() => {
                 onToggle();
+                // Only pan the map if the user is opening the card, not closing it
                 if (!isExpanded && onMapClick) onMapClick();
             }}
             className="bg-[#2d2d2d] p-4 rounded-xl border border-gray-700 space-y-3 hover:border-blue-500/50 cursor-pointer transition-all active:scale-[0.99]"

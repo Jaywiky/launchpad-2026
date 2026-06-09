@@ -7,6 +7,7 @@ import { emptyStorage, writeJsonFile } from '../services/storage/fileSystem';
 const typeFilters = ['All', 'food_bank', 'toilet', 'recycling', 'library', 'green_space'];
 const specificCategories = ['food_bank', 'toilet', 'recycling', 'library', 'green_space'];
 
+// Calculates great-circle distance using the Haversine formula (returns kilometers)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return null;
     const R = 6371;
@@ -87,14 +88,18 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
     const filterRef = useRef(null);
     const cardsRef = useRef(null);
 
+    // Track the Y translation of the bottom sheet for fluid drag animations
     const sheetY = useMotionValue(0);
     const dragRef = useRef({ startY: 0, startVal: 0, lastY: 0, lastTime: 0 });
 
+    // Defines the boundaries of the bottom sheet's movement
     const minY = -(window.innerHeight * 0.55);
     const maxY = 0;
 
+    // Dynamically adjusts the bottom sheet's position to accommodate an expanded card's content without overflowing
     useEffect(() => {
         if (expandedCardId !== null && headerRef.current && filterRef.current && cardsRef.current) {
+            // setTimeout ensures Framer Motion has started rendering the newly expanded card before we measure DOM heights
             setTimeout(() => {
                 if (!headerRef.current || !filterRef.current || !cardsRef.current) return;
 
@@ -106,12 +111,14 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
                 const defaultPeekHeight = window.innerHeight * 0.3;
                 const targetTranslationY = defaultPeekHeight - totalRequiredHeight;
 
+                // Ensure the sheet doesn't push down below resting (0) or pull up past maximum (minY)
                 const clampedY = Math.max(minY, Math.min(0, targetTranslationY));
 
                 animate(sheetY, clampedY, { type: 'spring', damping: 30, stiffness: 300 });
                 setIsExpanded(true);
             }, 60);
         } else if (expandedCardId === null) {
+            // Reset to resting position when all cards are collapsed
             animate(sheetY, 0, { type: 'spring', damping: 30, stiffness: 300 });
             setIsExpanded(false);
         }
@@ -123,6 +130,7 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
         return activeCategory.includes(resource.type);
     });
 
+    // Append user distance to each resource and sort closest-first
     const sortedResources = filteredResources.map((resource) => {
         if (!resource || !resource.lat || !resource.lng || !userPos) {
             return { ...resource, distance: null };
@@ -130,6 +138,7 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
         const dist = calculateDistance(userPos[0], userPos[1], Number(resource.lat), Number(resource.lng));
         return { ...resource, distance: dist };
     }).sort((a, b) => {
+        // Items missing coordinates get pushed to the bottom of the list
         if (a.distance === null) return 1;
         if (b.distance === null) return -1;
         return a.distance - b.distance;
@@ -143,12 +152,14 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
 
         let newSelection = activeCategory.filter(c => c !== 'All');
 
+        // Toggle the specific category on/off
         if (newSelection.includes(category)) {
             newSelection = newSelection.filter(c => c !== category);
         } else {
             newSelection.push(category);
         }
 
+        // If the user deselected everything OR manually selected every individual category, reset to 'All'
         if (newSelection.length === 0 || newSelection.length === specificCategories.length) {
             setActiveCategory(['All']);
         } else {
@@ -178,8 +189,10 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
     };
 
     const handleTouchEnd = () => {
+        // Calculate drag velocity to support "flick" gestures for expanding/collapsing
         const velocity = dragRef.current.lastY - dragRef.current.startY;
         const currentY = sheetY.get();
+        // Expand if user flicked upwards fast enough, OR if they dragged it past the halfway point
         const shouldExpand = velocity < -50 || currentY < minY / 2;
 
         animate(sheetY, shouldExpand ? minY : maxY, { type: 'spring', damping: 30, stiffness: 300 });

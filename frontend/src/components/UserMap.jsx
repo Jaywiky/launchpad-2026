@@ -4,6 +4,7 @@ import { Geolocation } from '@capacitor/geolocation'
 import { App as CapacitorApp } from '@capacitor/app'
 import { useTranslation } from 'react-i18next'
 
+// Switch function for getting colour of resource on map
 const getMarkerColor = (type, colorBlind) => {
   if (colorBlind) {
     switch (type) {
@@ -26,6 +27,7 @@ const getMarkerColor = (type, colorBlind) => {
   }
 }
 
+// Pans the map to the user's location only on the initial load/first fix
 function RecenterOnce({ pos }) {
   const map = useMap()
   const [hasRecentered, setHasRecentered] = useState(false)
@@ -40,6 +42,7 @@ function RecenterOnce({ pos }) {
   return null
 }
 
+// Smoothly pans to a specific marker when a resource is selected
 function FlyToSelectedResource({ pos }) {
   const map = useMap()
 
@@ -47,12 +50,14 @@ function FlyToSelectedResource({ pos }) {
     if (pos) {
       const targetZoom = 16;
       const targetPoint = map.project(pos, targetZoom);
+      // Offset the Y-axis so the marker isn't hidden behind overlaid UI components
       const yOffset = window.innerHeight * 0.25;
       targetPoint.y += yOffset;
       const offsetLatLng = map.unproject(targetPoint, targetZoom);
 
       map.flyTo(offsetLatLng, targetZoom, { duration: 0.8 });
 
+      // Automatically open the popup for the selected resource
       map.eachLayer((layer) => {
         if (layer.getLatLng && typeof layer.openPopup === 'function') {
           const layerLatLng = layer.getLatLng();
@@ -71,6 +76,7 @@ function FlyToSelectedResource({ pos }) {
   return null
 }
 
+// Button for flying to user location
 function LocateButton({ pos, loading, onLocate }) {
   const map = useMap()
 
@@ -112,6 +118,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
   const { t } = useTranslation()
   const [userPos, setUserPos] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Tracks whether the position is genuine GPS data or hardcoded fallback data
   const [isRealPos, setIsRealPos] = useState(false)
 
   const fetchLocation = async () => {
@@ -120,6 +127,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
     try {
       await Geolocation.requestPermissions()
 
+      // Step 1: Attempt a quick, low-accuracy fetch first for better perceived performance
       try {
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: false,
@@ -130,6 +138,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
         setIsRealPos(true)
         if (onLocationUpdate) onLocationUpdate(coords)
       } catch {
+        // Step 2: If low-accuracy fails, force a high-accuracy attempt (longer timeout)
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 30000,
@@ -140,6 +149,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
         if (onLocationUpdate) onLocationUpdate(coords)
       }
     } catch (err) {
+      // Step 3: Global fallback if permissions denied or GPS completely fails
       const fallbackCoords = [52.483, -1.913];
       setUserPos(fallbackCoords)
       setIsRealPos(false)
@@ -152,6 +162,7 @@ export default function UserMap({ resources = [], activeCategory = ['All'], onLo
   useEffect(() => {
     fetchLocation()
 
+    // Refresh user location automatically when the app resumes from the background
     const listenerHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
         console.log('[UserMap] App returned to foreground, refreshing location data')
