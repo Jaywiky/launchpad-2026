@@ -25,60 +25,6 @@ async function deleteData() {
     window.dispatchEvent(new Event('resourceUpdated'));
 }
 
-async function seedFakeData() {
-    try {
-        const envelope = {
-            version: 200,
-            datasets: [
-                { data: 'hash_food_123', translations: { en: 'hash_food_en', ur: 'hash_food_ur', pl: 'hash_food_pl' } },
-                { data: 'hash_toil_999', translations: { en: 'hash_toilet_en', ur: 'hash_toil_ur' } },
-            ],
-            signature: 'ed25519_sig_over_above_fields',
-        };
-
-        const dataByHash = {
-            hash_food_123: [
-                {
-                    id: 'givefood_1',
-                    name: 'Ladywood Food Bank',
-                    type: 'food_bank',
-                    lat: 52.4814,
-                    lng: -1.9123,
-                    notes: 'Referral needed',
-                    extended: { referral_required: true },
-                },
-            ],
-            hash_toil_999: [
-                {
-                    id: 'toiletmap_1',
-                    name: "Broad Street Public Restrooms",
-                    type: 'toilet',
-                    lat: 52.4782,
-                    lng: -1.9101,
-                    notes: 'Customer use only',
-                    extended: { accessible: true },
-                },
-            ],
-        };
-
-        await writeJsonFile('envelope.json', envelope);
-
-        for (const dataset of envelope.datasets) {
-            await writeJsonFile(`json_data/${dataset.data}.json`, dataByHash[dataset.data] || []);
-
-            for (const [locale, hash] of Object.entries(dataset.translations || {})) {
-                await writeJsonFile(`json_data/${hash}.json`, { locale, placeholder: true });
-            }
-        }
-
-        alert('Fake data seeded. You are now on version 200');
-        window.dispatchEvent(new Event('resourceUpdated'));
-    } catch (error) {
-        console.error('[ResourceSheet] Failed to seed data:', error);
-        alert('Error seeding data.');
-    }
-}
-
 export default function ResourceSheet({ resources, isLoading, activeCategory, setActiveCategory, userPos, onCardClick }) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
@@ -224,16 +170,6 @@ export default function ResourceSheet({ resources, isLoading, activeCategory, se
             >
                 <div className="w-12 h-1.5 bg-gray-500 rounded-full mb-4"></div>
                 <h1 className="text-2xl font-bold w-full text-white">{t('ladywood_resources')}</h1>
-
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        seedFakeData();
-                    }}
-                    className="absolute top-4 left-4 z-50 rounded bg-red-500 px-2 py-1 text-xs font-medium text-white shadow-lg"
-                >
-                    Seed (v200)
-                </button>
 
                 <button
                     onClick={(e) => {
